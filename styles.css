@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=DM+Mono&display=swap');
+
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 30%, #24233a 0%, #0e0d18 54%, #08070e 100%);
+  color: #eee7d1;
+  font-family: "DM Mono", monospace;
+}
+.game-shell { width: 100vw; height: 100vh; padding: 0; }
+.game-frame { position: relative; width: 100%; height: 100%; overflow: hidden; }
+canvas { display: block; width: 100%; height: 100%; background: #171523; }
+.overlay { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; background: #0b0914d9; transition: opacity .25s; }
+.overlay.hidden { opacity: 0; pointer-events: none; }
+.overlay h1 { margin: 2px 0 10px; font: 800 clamp(42px, 7vw, 72px) Cinzel, serif; color: #f3d58b; letter-spacing: .08em; text-shadow: 3px 4px 0 #5e282d; }
+.overlay p { margin: 4px; color: #d0c6cf; }
+.eyebrow { color: #bc5a4e !important; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; }
+button { margin-top: 22px; padding: 13px 21px; border: 1px solid #e1c477; background: #8e3d3f; color: #fff2cb; cursor: pointer; font: 700 15px Cinzel, serif; letter-spacing: .04em; box-shadow: 3px 3px 0 #3a1823; }
+button:hover { background: #ad5050; transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #3a1823; }
+.menu-actions { display: grid; gap: 10px; width: min(250px, 80vw); margin-top: 18px; }
+.menu-actions button { width: 100%; margin: 0; }
+.secondary-menu-button { border-color: #63596d; background: #292435; color: #e1d8df; box-shadow: 3px 3px 0 #17131f; }
+.secondary-menu-button:hover { background: #3b3346; box-shadow: 4px 4px 0 #17131f; }
+.overlay h2 { margin: 0; color: #f3d58b; font: 800 40px Cinzel, serif; letter-spacing: .08em; text-shadow: 3px 4px 0 #5e282d; }
+.modal { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: #090711bd; }
+.modal.hidden { display: none; }
+.settings-card { width: min(490px, 100%); padding: 25px; border: 1px solid #70647b; background: #1b1728; box-shadow: 0 20px 70px #000b; }
+.settings-heading { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #40384b; padding-bottom: 16px; }
+.settings-heading .eyebrow { margin: 0 0 4px; }
+.settings-heading h2 { margin: 0; color: #f2d78e; font: 800 28px Cinzel, serif; }
+.close-button { margin: 0; min-width: 34px; padding: 2px 7px 6px; border-color: #63596d; background: transparent; box-shadow: none; color: #d6ccd7; font: 28px sans-serif; line-height: 1; }
+.close-button:hover { background: #3a3346; box-shadow: none; transform: none; }
+.settings-section { padding-top: 18px; }
+.settings-section h3 { margin: 0 0 11px; color: #d9cda9; font: 700 15px Cinzel, serif; }
+.binding-grid { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; color: #c2bac8; font-size: 12px; }
+.binding-button { min-width: 118px; margin: 0; padding: 7px 9px; border-color: #5b5266; background: #282334; box-shadow: none; color: #f0dfae; font: 12px "DM Mono", monospace; }
+.binding-button:hover, .binding-button.listening { background: #493a4b; box-shadow: none; transform: none; }
+.setting-hint { min-height: 16px; margin: 12px 0 0; color: #92899a; font-size: 10px; }
+.difficulty-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.difficulty-options button { min-height: 75px; margin: 0; padding: 9px 6px; border-color: #554d60; background: #272231; box-shadow: none; color: #d9d1d7; font: 12px "DM Mono", monospace; }
+.difficulty-options button:hover { background: #383143; box-shadow: none; transform: none; }
+.difficulty-options button.active { border-color: #e1c477; background: #57393c; color: #fff0bd; }
+.difficulty-options strong, .difficulty-options small { display: block; }
+.difficulty-options small { margin-top: 7px; color: inherit; font-size: 9px; line-height: 1.35; opacity: .8; }
+@media (max-width: 650px) { .settings-card { padding: 19px; } }
