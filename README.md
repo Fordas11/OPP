@@ -1,31 +1,54 @@
-# Dungeon Crawler - OOP project template
+# Dungeon Crawler
 
-This repository keeps the current browser game (`index.html`, `styles.css`, `game.js`) as the required graphical and controls prototype. The `src/` directory is the framework-free TypeScript architecture to migrate into next. No game framework is used.
+A 2D co-op web game for up to four players. One player (the host) creates a room and shares the 4-letter code, the others join, the host presses Start, and together they fight skeletons in a new random maze on every floor. Written in TypeScript with Canvas 2D and WebSockets, no game framework.
 
-## Requirement-aligned template
+## Run
 
-- Language and platform: TypeScript web application with Canvas 2D.
-- Packages: `src/client`, `src/server`, and `src/shared`.
-- Network contract: JSON messages and a `WebSocketGameClient` template; `RoomRegistry` is the server-side composition point.
-- Prototype: the existing playable Canvas implementation demonstrates rendering and controls before the pattern migration.
-- Class count: the template already contains more than 20 named classes, ready for a detailed UML class diagram.
+```bash
+npm install
+npm start
+```
 
-## Implemented pattern scaffolds
+## Playing with friends on the same Wi-Fi or phone hotspot
 
-| Pattern | Template classes | Requirement link |
-| --- | --- | --- |
-| Singleton | `GameApplication`, `RoomRegistry` | One composition root; registry initialization is eager and registry mutations are serialized through `AsyncLock`. |
-| Factory | `DungeonEntityFactory`, `Knight`, `Skeleton`, `Boulder`, `Pillar` | Four related map-object classes. |
-| Strategy | `IdleStrategy`, `WanderStrategy`, `ChaseStrategy`, `AttackStrategy` | Four skeleton AI strategies. |
-| Observer | `GameEventBus`, `HudObserver`, `NetworkObserver` | UI and network layers react to domain events independently. |
-| Command | `MoveCommand`, `AttackCommand`, `CommandHistory` | Input commands include `undo()`. |
-| Adapter | `JsonProtocolAdapter` | Transport JSON is isolated from the game domain. |
-| State | `MenuState`, `PlayingState`, `PausedState`, `GameOverState` | Menu and game flow are explicit states. |
+1. Connect the computer that runs the game (the host) and every other player's device to the same network. A phone hotspot works: switch it on and connect everyone to it.
+2. On the host, run `npm start` and open `http://localhost:3000`. Find the host's local IP address (on Windows run `ipconfig` and look for the IPv4 address, for example `192.168.0.112`).
+3. The host clicks **Create Room** and tells the others the room code.
+4. Everyone else opens `http://<host IP>:3000` (for example `http://192.168.0.112:3000`), clicks **Join Room** and types the code.
+5. When everyone has joined (up to 4), the host clicks **Start Game**.
 
-## Next migration step
+Notes:
+- The first time, Windows asks if Node.js may accept connections. Allow it for private networks. If the hotspot network is marked as "public", allow it there too, otherwise the other devices cannot connect.
+- Some hotspots and public Wi-Fi block devices from talking to each other (client isolation). Then use a different network or the host's own hotspot.
+- Players need a keyboard and mouse. There are no touch controls.
+- A game cannot be joined after it has started. If someone leaves during the game, the others keep playing.
 
-1. Install TypeScript with `npm install`.
-2. Run `npm run check` and `npm run build`.
-3. Move one responsibility at a time from `game.js` into `src/client`, beginning with entities and the factory.
+## Playing over the internet (deploy to Render)
 
-The server remains a template on purpose: the project can later provide a local WebSocket service that uses `RoomRegistry` and broadcasts `GameSnapshot` objects to all players in the same room.
+The game needs a server that keeps running and holds WebSocket connections, so it cannot run on Vercel (Vercel only runs short serverless functions). Render, Railway, Fly.io or Azure App Service all work. On Render:
+
+1. Push this repository to GitHub.
+2. On render.com create a **New > Web Service** from the repository.
+3. Build command: `npm install --include=dev && npm run build`
+4. Start command: `node dist/server/server.js`
+5. When it is deployed, everyone opens the `https://....onrender.com` address, one player creates a room and the others join with the code. No same-network setup is needed.
+
+The free plan puts the service to sleep after about 15 minutes without visitors, so the first page load can take up to a minute.
+
+## Controls
+
+- Move: `W` `A` `S` `D`
+- Attack: left mouse button (aim with the mouse)
+- `Esc`: menu (the game keeps running)
+- Keybinds and difficulty can be changed in Settings. Difficulty applies to rooms you create.
+
+## Project structure
+
+```
+public/          index.html and styles.css
+src/shared/      game rules, used by the server (types, maze, movement, level, game)
+src/server/      HTTP + WebSocket server, rooms and the network address helper
+src/client/      browser code: input, drawing, menus, connection
+```
+
+How it works: the server runs the game. Each browser sends its input (keys and mouse aim) 30 times per second, the server updates the game and sends the full state back, and the browser only draws it.

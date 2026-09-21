@@ -1,17 +1,34 @@
-import { JsonProtocolAdapter, type ClientMessage, type ServerMessage } from '../shared/protocol';
+import type { ClientMessage, ServerMessage } from '../shared/messages.js';
 
-export interface NetworkClient { connect(url: string): void; send(message: ClientMessage): void; disconnect(): void; }
+let socket: WebSocket | null = null;
 
-/** WebSocket client template. The matching server owns RoomRegistry and broadcasts snapshots. */
-export class WebSocketGameClient implements NetworkClient {
-  private socket?: WebSocket;
-  private readonly protocol = new JsonProtocolAdapter();
-  public onMessage?: (message: ServerMessage) => void;
+export function isConnected(): boolean {
+  return socket !== null && socket.readyState === WebSocket.OPEN;
+}
 
-  public connect(url: string): void {
-    this.socket = new WebSocket(url);
-    this.socket.addEventListener('message', event => this.onMessage?.(this.protocol.decode(String(event.data)) as ServerMessage));
-  }
-  public send(message: ClientMessage): void { if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(this.protocol.encode(message)); }
-  public disconnect(): void { this.socket?.close(); this.socket = undefined; }
+/** Opens a WebSocket to the server that served this page. */
+export function connect(onMessage: (message: ServerMessage) => void, onLost: () => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const protocol = location.protocol === 'https:' ? 'wss' : 'ws'; // hosting sites serve the page over https
+    const ws = new WebSocket(`${protocol}://${location.host}`);
+    socket = ws;
+    ws.onopen = () => resolve();
+    ws.onerror = () => reject(new Error('Cannot reach the server.'));
+    ws.onmessage = event => onMessage(JSON.parse(event.data) as ServerMessage);
+    ws.onclose = () => {
+      if (socket !== ws) return; // we closed it on purpose
+      socket = null;
+      onLost();
+    };
+  });
+}
+
+export function send(message: ClientMessage): void {
+  if (isConnected()) socket!.send(JSON.stringify(message));
+}
+
+export function disconnect(): void {
+  const old = socket;
+  socket = null;
+  old?.close();
 }

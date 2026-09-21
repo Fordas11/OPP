@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dungeon Crawler</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-frame">
+      <canvas id="game" width="1920" height="1200" aria-label="Knights fighting skeletons"></canvas>
+
+      <!-- Main menu: create or join a room -->
+      <div id="menuScreen" class="overlay">
+        <h1>Dungeon Crawler</h1>
+        <p id="menuMessage" class="message"></p>
+        <div class="menu-actions">
+          <button id="createButton">Create Room</button>
+          <input id="codeInput" maxlength="4" placeholder="ROOM CODE" autocomplete="off" />
+          <button id="joinButton" class="secondary-menu-button">Join Room</button>
+          <button id="menuSettingsButton" class="secondary-menu-button">Settings</button>
+        </div>
+      </div>
+
+      <!-- Lobby: waiting for players (up to 4) -->
+      <div id="waitingScreen" class="overlay hidden">
+        <h2>Room code</h2>
+        <p id="roomCode" class="room-code"></p>
+        <p id="lobbyPlayers"></p>
+        <p id="lobbyHint"></p>
+        <div class="menu-actions">
+          <button id="startGameButton">Start Game</button>
+          <button id="cancelButton" class="secondary-menu-button">Leave Room</button>
+        </div>
+      </div>
+
+      <!-- Menu during the game (the game keeps running) -->
+      <div id="pauseScreen" class="overlay hidden">
+        <h2>Menu</h2>
+        <p>The game keeps running for the others.</p>
+        <div class="menu-actions">
+          <button id="resumeButton">Resume</button>
+          <button id="pauseSettingsButton" class="secondary-menu-button">Settings</button>
+          <button id="leaveButton" class="secondary-menu-button">Leave Room</button>
+        </div>
+      </div>
+
+      <!-- Both players are dead -->
+      <div id="gameOverScreen" class="overlay hidden">
+        <h1>FALLEN</h1>
+        <p id="finalLevel"></p>
+        <div class="menu-actions">
+          <button id="restartButton">Restart</button>
+          <button id="gameOverLeaveButton" class="secondary-menu-button">Leave Room</button>
+        </div>
+      </div>
+    </main>
+
+    <div id="settingsPanel" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="settings-card">
+        <div class="settings-heading">
+          <div><p class="eyebrow">Dungeon options</p><h2 id="settingsTitle">Settings</h2></div>
+          <button id="closeSettings" class="close-button" aria-label="Close settings">×</button>
+        </div>
+        <section class="settings-section">
+          <h3>Keybinds</h3>
+          <div class="binding-grid">
+            <span>Move up</span><button class="binding-button" data-bind="up"></button>
+            <span>Move down</span><button class="binding-button" data-bind="down"></button>
+            <span>Move left</span><button class="binding-button" data-bind="left"></button>
+            <span>Move right</span><button class="binding-button" data-bind="right"></button>
+            <span>Attack</span><button class="binding-button" data-bind="attack"></button>
+          </div>
+          <p id="bindingHint" class="setting-hint"></p>
+        </section>
+        <section class="settings-section">
+          <h3>Difficulty</h3>
+          <div id="difficultyOptions" class="difficulty-options">
+            <button data-difficulty="calm"><strong>Calm</strong><small>Short sight · 1 damage</small></button>
+            <button data-difficulty="standard"><strong>Standard</strong><small>Medium sight · 1 damage</small></button>
+            <button data-difficulty="brutal"><strong>Brutal</strong><small>Long sight · 2 damage</small></button>
+          </div>
+          <p class="setting-hint">Difficulty applies to rooms you create.</p>
+        </section>
+      </div>
+    </div>
+
+    <script type="module" src="client/main.js"></script>
+  </body>
+</html>

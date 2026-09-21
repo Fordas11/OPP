@@ -1,0 +1,127 @@
+import { ARENA_HEIGHT as H, ARENA_WIDTH as W } from '../shared/constants.js';
+import type { GameState } from '../shared/types.js';
+import { drawEffects } from './effects.js';
+import { isWall, MAZE_COLS, MAZE_LEFT, MAZE_ROWS, MAZE_TOP, TILE } from '../shared/maze.js';
+import { CAPE_COLORS, drawKnight, drawSkeleton } from './sprites.js';
+
+/** Draws one frame of the game. `myId` is the player controlled in this browser. */
+export function drawGame(ctx: CanvasRenderingContext2D, state: GameState, myId: number): void {
+  const scale = ctx.canvas.width / W;
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  drawMaze(ctx, state.maze);
+  drawTopBar(ctx, state, myId);
+
+  [...state.enemies].sort((a, b) => a.y - b.y).forEach(e => drawSkeleton(ctx, e));
+  for (const player of state.players) {
+    if (player.hp <= 0) continue;
+    drawKnight(ctx, player);
+    if (player.id === myId) drawYouMarker(ctx, player.x, player.y);
+  }
+
+  drawEffects(ctx, W, H);
+  drawBanner(ctx, state, myId);
+}
+
+function drawMaze(ctx: CanvasRenderingContext2D, maze: string[]): void {
+  ctx.fillStyle = '#171525';
+  ctx.fillRect(0, 0, W, H);
+
+  const floor = ctx.createLinearGradient(0, 0, W, H);
+  floor.addColorStop(0, '#2a2640');
+  floor.addColorStop(1, '#1c1a2d');
+
+  for (let row = 0; row < MAZE_ROWS; row++) {
+    for (let col = 0; col < MAZE_COLS; col++) {
+      const x = MAZE_LEFT + col * TILE;
+      const y = MAZE_TOP + row * TILE;
+      if (isWall(maze, col, row)) drawWall(ctx, x, y);
+      else drawFloorTile(ctx, x, y, floor);
+    }
+  }
+}
+
+function drawFloorTile(ctx: CanvasRenderingContext2D, x: number, y: number, fill: CanvasGradient): void {
+  ctx.fillStyle = fill;
+  ctx.fillRect(x, y, TILE, TILE);
+  ctx.strokeStyle = '#363148';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, TILE - 1, TILE - 1);
+}
+
+function drawWall(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.fillStyle = '#3a3247';
+  ctx.fillRect(x, y, TILE, TILE);
+  ctx.fillStyle = '#54495f'; // lighter top of the stone block
+  ctx.fillRect(x + 3, y + 3, TILE - 6, TILE - 12);
+  ctx.strokeStyle = '#1b1725';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
+}
+
+function drawTopBar(ctx: CanvasRenderingContext2D, state: GameState, myId: number): void {
+  ctx.fillStyle = '#110f1af0';
+  ctx.fillRect(0, 0, W, MAZE_TOP);
+
+  ctx.fillStyle = '#e8dcb9';
+  ctx.font = '700 18px Cinzel';
+  ctx.fillText(`FLOOR ${state.level}`, 25, 37);
+
+  const count = state.enemies.length;
+  ctx.font = '13px DM Mono';
+  ctx.fillStyle = '#b8afbd';
+  ctx.fillText(`${count} SKELETON${count === 1 ? '' : 'S'} REMAIN`, 150, 36);
+
+  // One health bar per player, in that player's knight color. Your own bar has a gold outline.
+  const players = [...state.players].sort((a, b) => a.id - b.id);
+  players.forEach((player, index) => {
+    drawHealthBar(ctx, 330 + index * 150, player.id, player.hp, player.maxHp, player.id === myId);
+  });
+}
+
+function drawHealthBar(ctx: CanvasRenderingContext2D, x: number, id: number, hp: number, maxHp: number, isMe: boolean): void {
+  const color = CAPE_COLORS[id % CAPE_COLORS.length];
+  const fill = Math.max(0, hp) / maxHp;
+
+  ctx.fillStyle = color;
+  ctx.fillRect(x, 26, 10, 10); // color swatch, matches the knight's cape
+  ctx.fillStyle = '#312939';
+  ctx.fillRect(x + 16, 25, 105, 12);
+  ctx.fillStyle = fill > 0 ? color : '#312939';
+  ctx.fillRect(x + 18, 27, 101 * fill, 8);
+  ctx.strokeStyle = isMe ? '#f3d58b' : '#938071';
+  ctx.lineWidth = isMe ? 2 : 1;
+  ctx.strokeRect(x + 16.5, 24.5, 105, 13);
+}
+
+function drawYouMarker(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.fillStyle = '#f3d58b';
+  ctx.font = '11px DM Mono';
+  ctx.textAlign = 'center';
+  ctx.fillText('YOU', x, y - 34);
+  ctx.textAlign = 'left';
+}
+
+function drawBanner(ctx: CanvasRenderingContext2D, state: GameState, myId: number): void {
+  ctx.textAlign = 'center';
+
+  if (state.banner > 0) {
+    ctx.globalAlpha = Math.min(1, state.banner * 2);
+    ctx.fillStyle = '#0b0914d0'; // dark backing so the text is readable over the walls
+    ctx.fillRect(W / 2 - 110, 62, 220, 46);
+    ctx.font = '800 36px Cinzel';
+    ctx.fillStyle = '#f2d98d';
+    ctx.fillText(`FLOOR ${state.level}`, W / 2, 96);
+    ctx.globalAlpha = 1;
+  }
+
+  const me = state.players.find(p => p.id === myId);
+  if (me && me.hp <= 0 && state.phase === 'playing') {
+    ctx.font = '13px DM Mono';
+    ctx.fillStyle = '#d0c6cf';
+    ctx.fillText('YOU HAVE FALLEN - WATCHING YOUR TEAM', W / 2, H - 20);
+  }
+
+  ctx.textAlign = 'left';
+}
