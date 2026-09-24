@@ -23,18 +23,6 @@ Notes:
 - Players need a keyboard and mouse. There are no touch controls.
 - A game cannot be joined after it has started. If someone leaves during the game, the others keep playing.
 
-## Playing over the internet (deploy to Render)
-
-The game needs a server that keeps running and holds WebSocket connections, so it cannot run on Vercel (Vercel only runs short serverless functions). Render, Railway, Fly.io or Azure App Service all work. On Render:
-
-1. Push this repository to GitHub.
-2. On render.com create a **New > Web Service** from the repository.
-3. Build command: `npm install --include=dev && npm run build`
-4. Start command: `node dist/server/server.js`
-5. When it is deployed, everyone opens the `https://....onrender.com` address, one player creates a room and the others join with the code. No same-network setup is needed.
-
-The free plan puts the service to sleep after about 15 minutes without visitors, so the first page load can take up to a minute.
-
 ## Controls
 
 - Move: `W` `A` `S` `D`
