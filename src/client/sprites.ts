@@ -5,7 +5,9 @@ export const CAPE_COLORS = ['#9f3e43', '#3e6b9f', '#3e9f5a', '#c9a23a']; // red,
 const SWORD_LENGTH = 46;
 const SWING_ARC = 1.7; // radians to each side of the aim, matches the hit area on the server
 
-export function drawSkeleton(ctx: CanvasRenderingContext2D, e: Enemy): void {
+export function drawSkeleton(ctx: CanvasRenderingContext2D, e: Enemy, color = '#c9c1aa'): void {
+  if (e.kind === 'runner') return drawRunner(ctx, e);
+  if (e.kind === 'brute') return drawBrute(ctx, e);
   const bounce = Math.sin(performance.now() / 170 + e.wobble) * 2;
   ctx.save();
   ctx.translate(e.x, e.y + bounce);
@@ -18,7 +20,7 @@ export function drawSkeleton(ctx: CanvasRenderingContext2D, e: Enemy): void {
 
   // skull
   ctx.strokeStyle = '#d8d1bb';
-  ctx.fillStyle = '#c9c1aa';
+  ctx.fillStyle = color;
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.arc(0, -11, 12, 0, Math.PI * 2);
@@ -48,6 +50,30 @@ export function drawSkeleton(ctx: CanvasRenderingContext2D, e: Enemy): void {
     ctx.fillStyle = '#b94c49';
     ctx.fillRect(e.x - 15, e.y - 34, (30 * e.hp) / e.maxHp, 4);
   }
+}
+
+/** Factory product has a matching small, quick-looking concrete drawing. */
+function drawRunner(ctx: CanvasRenderingContext2D, e: Enemy): void {
+  ctx.save();
+  ctx.translate(e.x, e.y); ctx.scale(0.72, 0.72);
+  ctx.fillStyle = '#7ee0d3';
+  ctx.beginPath(); ctx.arc(0, -10, 11, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#143d45'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-9, 20); ctx.moveTo(0, 0); ctx.lineTo(9, 20); ctx.moveTo(-8, 7); ctx.lineTo(9, 5); ctx.stroke();
+  ctx.fillStyle = '#102b32'; ctx.fillRect(-6, -12, 3, 3); ctx.fillRect(4, -12, 3, 3);
+  ctx.restore();
+}
+
+/** Factory product has a matching large, durable concrete drawing. */
+function drawBrute(ctx: CanvasRenderingContext2D, e: Enemy): void {
+  ctx.save();
+  ctx.translate(e.x, e.y); ctx.scale(1.28, 1.28);
+  ctx.fillStyle = '#58445d';
+  ctx.beginPath(); ctx.arc(0, -9, 14, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#d4c7bf'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(0, 3); ctx.lineTo(-10, 22); ctx.moveTo(0, 3); ctx.lineTo(10, 22); ctx.moveTo(-12, 9); ctx.lineTo(13, 9); ctx.stroke();
+  ctx.fillStyle = '#ff4d54'; ctx.beginPath(); ctx.arc(-5, -10, 3, 0, Math.PI * 2); ctx.arc(5, -10, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 }
 
 export function drawKnight(ctx: CanvasRenderingContext2D, p: Player): void {

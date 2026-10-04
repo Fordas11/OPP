@@ -1,6 +1,7 @@
-import { randomBetween, type Point } from './math.js';
-import { cellCenters, startPoint } from './maze.js';
-import type { Enemy } from './types.js';
+import type { Point } from './math.js';
+import { EnemyFactory, type EnemyKind } from './enemyFactory.js';
+import { cellCenters, startPoint, tileCenter } from './maze.js';
+import type { Enemy, HeartPickup, IceTile } from './types.js';
 
 const MIN_DISTANCE_FROM_START = 190;
 
@@ -27,23 +28,27 @@ export function createEnemies(level: number, maze: string[], playerCount: number
     .sort(() => Math.random() - 0.5);
 
   const enemies: Enemy[] = [];
-  const hp = 2 + Math.floor(level / 4);
+  const factory = new EnemyFactory();
+  const kinds: EnemyKind[] = ['skeleton', 'runner', 'brute'];
 
   for (let i = 0; i < level + playerCount; i++) {
     const spot = spots[i % spots.length]; // reuse cells if there are more skeletons than cells
-    enemies.push({
-      x: spot.x + randomBetween(-6, 6),
-      y: spot.y + randomBetween(-6, 6),
-      r: 16,
-      hp,
-      maxHp: hp,
-      speed: 54 + level * 4,
-      hit: 0,
-      attackTimer: randomBetween(0.2, 0.9),
-      wobble: Math.random() * 6,
-      wanderAngle: Math.random() * Math.PI * 2,
-      wanderTime: randomBetween(0.4, 1.7),
-    });
+    const kind = kinds[(i + level - 1) % kinds.length];
+    enemies.push(factory.create(kind, spot, level));
   }
   return enemies;
+}
+
+/** Health pickups never appear inside the protected start room. */
+/** Hearts only appear on ordinary floor, never on a hazard or healing tile. */
+export function createHearts(level: number, maze: string[], specialTiles: IceTile[] = []): HeartPickup[] {
+  const start = startPoint();
+  const spots = cellCenters(maze)
+    .filter(cell => Math.hypot(cell.x - start.x, cell.y - start.y) >= MIN_DISTANCE_FROM_START)
+    .filter(cell => !specialTiles.some(tile => {
+      const center = tileCenter(tile.col, tile.row);
+      return cell.x === center.x && cell.y === center.y;
+    }))
+    .sort(() => Math.random() - 0.5);
+  return spots.slice(0, Math.min(1 + Math.floor(level / 3), 3)).map(spot => ({ x: spot.x, y: spot.y, amount: 2 }));
 }

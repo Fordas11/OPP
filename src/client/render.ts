@@ -10,10 +10,11 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: GameState, myId: 
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.clearRect(0, 0, W, H);
 
-  drawMaze(ctx, state.maze);
+  drawMaze(ctx, state.maze, state.iceTiles, state.fireTiles, state.healingTiles, state.themeVisuals.wallColor);
   drawTopBar(ctx, state, myId);
 
-  [...state.enemies].sort((a, b) => a.y - b.y).forEach(e => drawSkeleton(ctx, e));
+  [...state.enemies].sort((a, b) => a.y - b.y).forEach(e => drawSkeleton(ctx, e, state.themeVisuals.enemyColor));
+  state.hearts.forEach(heart => drawHeart(ctx, heart.x, heart.y));
   for (const player of state.players) {
     if (player.hp <= 0) continue;
     drawKnight(ctx, player);
@@ -24,7 +25,7 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: GameState, myId: 
   drawBanner(ctx, state, myId);
 }
 
-function drawMaze(ctx: CanvasRenderingContext2D, maze: string[]): void {
+function drawMaze(ctx: CanvasRenderingContext2D, maze: string[], iceTiles: { col: number; row: number }[], fireTiles: { col: number; row: number }[], healingTiles: { col: number; row: number }[], wallColor: string): void {
   ctx.fillStyle = '#171525';
   ctx.fillRect(0, 0, W, H);
 
@@ -36,22 +37,42 @@ function drawMaze(ctx: CanvasRenderingContext2D, maze: string[]): void {
     for (let col = 0; col < MAZE_COLS; col++) {
       const x = MAZE_LEFT + col * TILE;
       const y = MAZE_TOP + row * TILE;
-      if (isWall(maze, col, row)) drawWall(ctx, x, y);
-      else drawFloorTile(ctx, x, y, floor);
+      if (isWall(maze, col, row)) drawWall(ctx, x, y, wallColor);
+      else {
+        const special = iceTiles.some(tile => tile.col === col && tile.row === row) ? 'ice'
+          : fireTiles.some(tile => tile.col === col && tile.row === row) ? 'fire'
+          : healingTiles.some(tile => tile.col === col && tile.row === row) ? 'healing' : 'normal';
+        drawFloorTile(ctx, x, y, floor, special);
+      }
     }
   }
 }
 
-function drawFloorTile(ctx: CanvasRenderingContext2D, x: number, y: number, fill: CanvasGradient): void {
-  ctx.fillStyle = fill;
+function drawFloorTile(ctx: CanvasRenderingContext2D, x: number, y: number, fill: CanvasGradient, special: 'ice' | 'fire' | 'healing' | 'normal'): void {
+  ctx.fillStyle = special === 'ice' ? '#82d8ed' : special === 'fire' ? '#c84b28' : special === 'healing' ? '#5caa62' : fill;
   ctx.fillRect(x, y, TILE, TILE);
-  ctx.strokeStyle = '#363148';
+  ctx.strokeStyle = special === 'ice' ? '#d2fbff' : special === 'fire' ? '#ffbf64' : special === 'healing' ? '#b2f08f' : '#363148';
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, TILE - 1, TILE - 1);
 }
 
-function drawWall(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  ctx.fillStyle = '#3a3247';
+/** Visible pickup for the Observer's heart-collected event. */
+function drawHeart(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#f04462';
+  ctx.beginPath();
+  ctx.moveTo(0, 12);
+  ctx.bezierCurveTo(-19, 0, -11, -14, 0, -6);
+  ctx.bezierCurveTo(11, -14, 19, 0, 0, 12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#ffd5dc'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.restore();
+}
+
+function drawWall(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {
+  ctx.fillStyle = color;
   ctx.fillRect(x, y, TILE, TILE);
   ctx.fillStyle = '#54495f'; // lighter top of the stone block
   ctx.fillRect(x + 3, y + 3, TILE - 6, TILE - 12);

@@ -1,30 +1,44 @@
 import { DIFFICULTIES, SWING_TIME, type Difficulty } from './constants.js';
-import { createEnemies, playerSpawn } from './level.js';
-import { createMaze } from './maze.js';
-import { distance, randomBetween } from './math.js';
+import { createEnemies, createHearts, playerSpawn } from './level.js';
+import { createMazeLayout } from './maze.js';
+import { distance } from './math.js';
 import { canSee, hasClearLine, moveBody } from './movement.js';
 import type { Enemy, GameState, Player, PlayerInput } from './types.js';
+import { strategyFor } from './enemyStrategies.js';
+import { EffectObserver, GameEventPublisher } from './gameEvents.js';
+import { themeForLevel, visualsFrom, type ThemeFactory } from './themeFactory.js';
 
 const NO_INPUT: PlayerInput = { up: false, down: false, left: false, right: false, aim: 0, attack: false };
+const LAST_LEVEL = 5;
 
 /** The whole co-op game. The server calls update() many times per second. */
 export class Game {
   public readonly state: GameState;
   private readonly settings: { sight: number; damage: number };
   private readonly inputs = new Map<number, PlayerInput>();
+  private readonly events = new GameEventPublisher();
+  private theme: ThemeFactory;
 
   public constructor(difficulty: Difficulty, playerIds: number[]) {
     this.settings = DIFFICULTIES[difficulty];
-    const maze = createMaze();
+    this.theme = themeForLevel(1);
+    const layout = createMazeLayout(this.theme.mazeVariant);
     this.state = {
       level: 1,
       phase: 'playing',
       banner: 2.2,
       players: playerIds.map((id, index) => this.createPlayer(id, index)),
-      enemies: createEnemies(1, maze, playerIds.length),
-      maze,
+      enemies: createEnemies(1, layout.tiles, playerIds.length),
+      maze: layout.tiles,
+      iceTiles: layout.iceTiles,
+      fireTiles: layout.fireTiles,
+      healingTiles: layout.healingTiles,
+      hearts: createHearts(1, layout.tiles, [...layout.iceTiles, ...layout.fireTiles, ...layout.healingTiles]),
       effects: [],
+      theme: this.theme.id,
+      themeVisuals: visualsFrom(this.theme),
     };
+    this.events.subscribe(new EffectObserver(this.state, () => this.theme.createEffectAppearance().hitColor));
     for (const id of playerIds) this.inputs.set(id, { ...NO_INPUT });
   }
 
@@ -60,7 +74,8 @@ export class Game {
     if (state.players.every(p => p.hp <= 0)) {
       state.phase = 'over';
     } else if (state.enemies.length === 0) {
-      this.startNextFloor();
+      if (state.level >= LAST_LEVEL) state.phase = 'over';
+      else this.startNextFloor();
     }
   }
 
@@ -68,7 +83,15 @@ export class Game {
   private startNextFloor(): void {
     const state = this.state;
     state.level++;
-    state.maze = createMaze();
+    this.theme = themeForLevel(state.level);
+    state.theme = this.theme.id;
+    state.themeVisuals = visualsFrom(this.theme);
+    const layout = createMazeLayout(this.theme.mazeVariant);
+    state.maze = layout.tiles;
+    state.iceTiles = layout.iceTiles;
+    state.fireTiles = layout.fireTiles;
+    state.healingTiles = layout.healingTiles;
+    state.hearts = createHearts(state.level, layout.tiles, [...layout.iceTiles, ...layout.fireTiles, ...layout.healingTiles]);
     state.enemies = createEnemies(state.level, state.maze, state.players.length);
     state.players.forEach((player, index) => Object.assign(player, playerSpawn(index)));
     state.banner = 2.2;
@@ -76,7 +99,7 @@ export class Game {
 
   private createPlayer(id: number, index: number): Player {
     const { x, y } = playerSpawn(index);
-    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245 };
+    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0 };
   }
 
   private updatePlayer(player: Player, dt: number): void {
@@ -92,13 +115,29 @@ export class Game {
     const dy = (input.down ? 1 : 0) - (input.up ? 1 : 0);
     if (dx || dy) {
       const length = Math.hypot(dx, dy);
+      const oldX = player.x; const oldY = player.y;
       moveBody(player, (dx / length) * player.speed * dt, (dy / length) * player.speed * dt, this.state.maze);
+      // A player cannot walk through a skeleton: keep the previous position on collision.
+      if (this.state.enemies.some(enemy => distance(player, enemy) < player.r + enemy.r)) { player.x = oldX; player.y = oldY; }
     }
+
+    const floorResult = this.theme.createFloorRules().apply(player, this.state, dt);
+    if (floorResult !== 'none') this.events.notify({ type: floorResult, x: player.x, y: player.y });
+    this.collectHeart(player);
 
     if (input.attack) {
       input.attack = false;
       this.swingSword(player);
     }
+  }
+
+  private collectHeart(player: Player): void {
+    if (player.hp >= player.maxHp) return;
+    const heart = this.state.hearts.find(item => distance(player, item) < player.r + 14);
+    if (!heart) return;
+    player.hp = Math.min(player.maxHp, player.hp + heart.amount);
+    this.state.hearts = this.state.hearts.filter(item => item !== heart);
+    this.events.notify({ type: 'heart-collected', x: heart.x, y: heart.y });
   }
 
   private swingSword(player: Player): void {
@@ -115,12 +154,12 @@ export class Game {
       enemy.hp--;
       enemy.hit = 0.16;
       moveBody(enemy, Math.cos(angle) * 20, Math.sin(angle) * 20, state.maze);
-      this.addEffect(enemy.x, enemy.y, '#ded6bf', 7);
+      this.events.notify({ type: 'enemy-hit', x: enemy.x, y: enemy.y });
     }
 
     state.enemies = state.enemies.filter(enemy => {
       if (enemy.hp > 0) return true;
-      this.addEffect(enemy.x, enemy.y, '#d9d0b9', 18);
+      this.events.notify({ type: 'enemy-defeated', x: enemy.x, y: enemy.y });
       return false;
     });
   }
@@ -134,40 +173,17 @@ export class Game {
     const visible = alive.filter(p => canSee(enemy, p, this.settings.sight, maze));
     const target = nearest(enemy, visible);
 
-    if (target) {
-      const angle = Math.atan2(target.y - enemy.y, target.x - enemy.x);
-      if (distance(target, enemy) > 38) {
-        moveBody(enemy, Math.cos(angle) * enemy.speed * dt, Math.sin(angle) * enemy.speed * dt, maze);
-      }
-    } else {
-      this.wander(enemy, dt);
-    }
+    strategyFor(enemy, target).move(enemy, { maze, target, dt });
 
     const victim = alive.find(p => distance(p, enemy) < 41 && p.hurt <= 0);
     if (victim && enemy.attackTimer <= 0) {
       victim.hp -= this.settings.damage;
       victim.hurt = 0.58;
       enemy.attackTimer = 1.05;
-      this.addEffect(victim.x, victim.y, '#b74843', 10);
+      this.events.notify({ type: 'player-hit', x: victim.x, y: victim.y });
     }
   }
 
-  private wander(enemy: Enemy, dt: number): void {
-    enemy.wanderTime -= dt;
-    if (enemy.wanderTime <= 0) {
-      enemy.wanderAngle = Math.random() * Math.PI * 2;
-      enemy.wanderTime = randomBetween(0.55, 1.8);
-    }
-    const oldX = enemy.x;
-    const oldY = enemy.y;
-    const step = enemy.speed * 0.48 * dt;
-    moveBody(enemy, Math.cos(enemy.wanderAngle) * step, Math.sin(enemy.wanderAngle) * step, this.state.maze);
-    if (enemy.x === oldX && enemy.y === oldY) enemy.wanderTime = 0; // blocked: pick a new direction
-  }
-
-  private addEffect(x: number, y: number, color: string, amount: number): void {
-    this.state.effects.push({ x, y, color, amount });
-  }
 }
 
 function nearest(from: Enemy, players: Player[]): Player | undefined {
