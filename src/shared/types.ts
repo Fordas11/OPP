@@ -11,6 +11,7 @@ export interface Player {
   hurt: number; // time left of the invulnerability after a hit
   speed: number;
   environmentTimer: number; // time until ice may damage this player again
+  weapon: string; // name of the current weapon, for example "Sharp Long Sword"
 }
 
 export interface Enemy {

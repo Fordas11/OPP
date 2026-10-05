@@ -7,6 +7,7 @@ import type { Enemy, GameState, Player, PlayerInput } from './types.js';
 import { strategyFor } from './enemyStrategies.js';
 import { EffectObserver, GameEventPublisher } from './gameEvents.js';
 import { themeForLevel, visualsFrom, type ThemeFactory } from './themeFactory.js';
+import { FLOOR_UPGRADES, SWORD_PROTOTYPE, type Weapon } from './weapon.js';
 
 const NO_INPUT: PlayerInput = { up: false, down: false, left: false, right: false, aim: 0, attack: false };
 const LAST_LEVEL = 5;
@@ -17,6 +18,7 @@ export class Game {
   private readonly settings: { sight: number; damage: number };
   private readonly inputs = new Map<number, PlayerInput>();
   private readonly events = new GameEventPublisher();
+  private readonly weapons = new Map<number, Weapon>(); // each player has their own weapon
   private theme: ThemeFactory;
 
   public constructor(difficulty: Difficulty, playerIds: number[]) {
@@ -39,13 +41,18 @@ export class Game {
       themeVisuals: visualsFrom(this.theme),
     };
     this.events.subscribe(new EffectObserver(this.state, () => this.theme.createEffectAppearance().hitColor));
-    for (const id of playerIds) this.inputs.set(id, { ...NO_INPUT });
+    for (const id of playerIds) {
+      this.inputs.set(id, { ...NO_INPUT });
+      this.weapons.set(id, SWORD_PROTOTYPE.clone()); // Prototype: copy the ready sword
+    }
+    this.state.players.forEach(player => { player.weapon = this.weapons.get(player.id)!.name(); });
   }
 
   /** Takes a player out of the game, for example when their browser disconnects. */
   public removePlayer(playerId: number): void {
     this.state.players = this.state.players.filter(p => p.id !== playerId);
     this.inputs.delete(playerId);
+    this.weapons.delete(playerId);
   }
 
   /** Stores the newest input. A click is remembered until the next update uses it. */
@@ -94,12 +101,24 @@ export class Game {
     state.hearts = createHearts(state.level, layout.tiles, [...layout.iceTiles, ...layout.fireTiles, ...layout.healingTiles]);
     state.enemies = createEnemies(state.level, state.maze, state.players.length);
     state.players.forEach((player, index) => Object.assign(player, playerSpawn(index)));
+    this.upgradeWeapons();
     state.banner = 2.2;
+  }
+
+  /** Decorator: every new floor wraps each player's weapon in one more upgrade. */
+  private upgradeWeapons(): void {
+    const Upgrade = FLOOR_UPGRADES[this.state.level - 2];
+    if (!Upgrade) return;
+    for (const player of this.state.players) {
+      const weapon = new Upgrade(this.weapons.get(player.id)!);
+      this.weapons.set(player.id, weapon);
+      player.weapon = weapon.name();
+    }
   }
 
   private createPlayer(id: number, index: number): Player {
     const { x, y } = playerSpawn(index);
-    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0 };
+    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0, weapon: '' };
   }
 
   private updatePlayer(player: Player, dt: number): void {
@@ -146,12 +165,13 @@ export class Game {
     player.cooldown = 0.35;
 
     const state = this.state;
+    const weapon = this.weapons.get(player.id)!;
     for (const enemy of state.enemies) {
       const angle = Math.atan2(enemy.y - player.y, enemy.x - player.x);
-      const inReach = distance(player, enemy) < 83 && Math.cos(angle - player.aim) > -0.15;
+      const inReach = distance(player, enemy) < weapon.reach() && Math.cos(angle - player.aim) > -0.15;
       if (!inReach || !hasClearLine(player, enemy, state.maze)) continue; // swords do not cut through walls
 
-      enemy.hp--;
+      enemy.hp -= weapon.damage();
       enemy.hit = 0.16;
       moveBody(enemy, Math.cos(angle) * 20, Math.sin(angle) * 20, state.maze);
       this.events.notify({ type: 'enemy-hit', x: enemy.x, y: enemy.y });

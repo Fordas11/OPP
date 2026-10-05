@@ -3,10 +3,12 @@ import { MAX_PLAYERS, TICK_RATE, type Difficulty } from '../shared/constants.js'
 import { Game } from '../shared/game.js';
 import type { ServerMessage } from '../shared/messages.js';
 import type { PlayerInput } from '../shared/types.js';
+import { WebSocketAdapter, type Connection } from './connection.js';
 
 interface Member {
   id: number; // 0 to 3, also decides the knight's color
   socket: WebSocket;
+  connection: Connection; // adapter around the socket
 }
 
 /** A room holds up to four players. The first one is the host and starts the game. */
@@ -35,7 +37,7 @@ export class Room {
 
   public add(socket: WebSocket): void {
     const id = [0, 1, 2, 3].find(free => !this.members.some(member => member.id === free))!;
-    this.members.push({ id, socket });
+    this.members.push({ id, socket, connection: new WebSocketAdapter(socket) });
     this.sendLobby();
   }
 
@@ -69,19 +71,19 @@ export class Room {
   private begin(): void {
     this.stopTimer();
     this.game = new Game(this.difficulty, this.members.map(member => member.id));
-    for (const member of this.members) send(member.socket, { type: 'game-started', you: member.id });
+    for (const member of this.members) member.connection.send({ type: 'game-started', you: member.id });
     this.timer = setInterval(() => this.tick(), 1000 / TICK_RATE);
   }
 
   private tick(): void {
     if (!this.game) return;
     this.game.update(1 / TICK_RATE);
-    for (const member of this.members) send(member.socket, { type: 'state', state: this.game.state });
+    for (const member of this.members) member.connection.send({ type: 'state', state: this.game.state });
   }
 
   private sendLobby(): void {
     this.members.forEach((member, index) => {
-      send(member.socket, {
+      member.connection.send({
         type: 'lobby',
         code: this.code,
         players: this.members.length,
@@ -96,6 +98,7 @@ export class Room {
   }
 }
 
+/** For sockets that are not in a room yet (for example "Room not found"). */
 export function send(socket: WebSocket, message: ServerMessage): void {
-  if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(message));
+  new WebSocketAdapter(socket).send(message);
 }

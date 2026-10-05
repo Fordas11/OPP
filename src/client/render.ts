@@ -18,7 +18,7 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: GameState, myId: 
   for (const player of state.players) {
     if (player.hp <= 0) continue;
     drawKnight(ctx, player);
-    if (player.id === myId) drawYouMarker(ctx, player.x, player.y);
+    if (player.id === myId) drawYouMarker(ctx, player.x, player.y, player.weapon);
   }
 
   drawEffects(ctx, W, H);
@@ -116,11 +116,12 @@ function drawHealthBar(ctx: CanvasRenderingContext2D, x: number, id: number, hp:
   ctx.strokeRect(x + 16.5, 24.5, 105, 13);
 }
 
-function drawYouMarker(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+function drawYouMarker(ctx: CanvasRenderingContext2D, x: number, y: number, weapon: string): void {
   ctx.fillStyle = '#f3d58b';
   ctx.font = '11px DM Mono';
   ctx.textAlign = 'center';
   ctx.fillText('YOU', x, y - 34);
+  ctx.fillText(weapon, x, y - 46);
   ctx.textAlign = 'left';
 }
 
