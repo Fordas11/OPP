@@ -4,6 +4,7 @@ import type { GameState } from '../shared/types.js';
 import { addBurst, addFlash, clearEffects, updateEffects } from './effects.js';
 import { moveMouse, pressKey, readInput, releaseAllKeys, releaseKey, requestAttack } from './input.js';
 import * as network from './network.js';
+import { drawPatternsHint, drawPatternsPanel } from './patternsPanel.js';
 import { drawGame } from './render.js';
 import { currentScreen, setText, showScreen } from './screens.js';
 import { loadSettings, settings } from './settings.js';
@@ -15,6 +16,8 @@ const codeInput = document.querySelector<HTMLInputElement>('#codeInput')!;
 const startGameButton = document.querySelector<HTMLElement>('#startGameButton')!;
 let myId = 0;
 let state: GameState | null = null;
+let adapterSent = 0; // messages the server's WebSocketAdapter has sent to us
+let showPatterns = false;
 
 // ---------- Messages from the server ----------
 
@@ -30,6 +33,7 @@ function onServerMessage(message: ServerMessage): void {
       showScreen('playing');
       break;
     case 'state':
+      adapterSent = message.adapterSent;
       onState(message.state);
       break;
     case 'error':
@@ -131,6 +135,11 @@ window.addEventListener('keydown', event => {
   }
   if (currentScreen() !== 'playing') return;
 
+  if (event.code === 'KeyP') {
+    showPatterns = !showPatterns;
+    return;
+  }
+
   event.preventDefault();
   pressKey(event.code);
 });
@@ -163,7 +172,11 @@ function frame(time: number): void {
   lastTime = time;
 
   updateEffects(dt);
-  if (state) drawGame(ctx, state, myId);
+  if (state) {
+    drawGame(ctx, state, myId);
+    drawPatternsHint(ctx);
+    if (showPatterns) drawPatternsPanel(ctx, state, myId, adapterSent);
+  }
   else ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   requestAnimationFrame(frame);

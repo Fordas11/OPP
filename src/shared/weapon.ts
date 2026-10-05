@@ -1,3 +1,5 @@
+export const BASE_REACH = 83;
+
 /** Numbers that describe a weapon. Kept in a separate object so copying it shows deep vs shallow. */
 export interface WeaponStats { damage: number; reach: number }
 
@@ -10,7 +12,7 @@ export interface Weapon {
 
 /** Prototype pattern: one ready sword is copied for every player with clone(). */
 export class Sword implements Weapon {
-  public constructor(public readonly stats: WeaponStats = { damage: 1, reach: 83 }) {}
+  public constructor(public readonly stats: WeaponStats = { damage: 1, reach: BASE_REACH }) {}
 
   public name(): string { return 'Sword'; }
   public damage(): number { return this.stats.damage; }
@@ -24,6 +26,14 @@ export class Sword implements Weapon {
 }
 
 export const SWORD_PROTOTYPE = new Sword();
+
+/** JavaScript has no memory addresses, so each object gets a number the first time it is asked for. */
+const ids = new WeakMap<object, number>();
+let lastId = 0;
+export function objectId(value: object): number {
+  if (!ids.has(value)) ids.set(value, ++lastId);
+  return ids.get(value)!;
+}
 
 /** Decorator pattern: wraps a weapon and changes one number, without touching the weapon inside. */
 abstract class WeaponDecorator implements Weapon {
@@ -48,5 +58,5 @@ export class BlessedBlade extends WeaponDecorator {
   public override reach(): number { return this.inner.reach() + 10; }
 }
 
-/** The upgrade found on each new floor: floor 2 gets the first one, floor 3 the second, floor 4 the third. */
-export const FLOOR_UPGRADES: Array<new (inner: Weapon) => Weapon> = [LongBlade, SharpBlade, BlessedBlade];
+/** Upgrades in the order a knight earns them (see KILLS_PER_UPGRADE in game.ts). */
+export const UPGRADES: Array<new (inner: Weapon) => Weapon> = [LongBlade, SharpBlade, BlessedBlade];

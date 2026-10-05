@@ -11,7 +11,19 @@ export interface Player {
   hurt: number; // time left of the invulnerability after a hit
   speed: number;
   environmentTimer: number; // time until ice may damage this player again
-  weapon: string; // name of the current weapon, for example "Sharp Long Sword"
+  kills: number; // skeletons this knight has defeated; every few kills earn a weapon upgrade
+  weapon: WeaponInfo; // what the game shows about this player's weapon
+}
+
+/** The numbers and ids behind a player's weapon. The ids are only used by the design patterns panel. */
+export interface WeaponInfo {
+  name: string; // for example "Sharp Long Sword"
+  damage: number;
+  reach: number;
+  swordId: number; // which Sword object this knight has
+  statsId: number; // which stats object that sword uses (deep copy: different for every knight)
+  prototypeStatsId: number; // stats of the original prototype sword
+  shallowStatsId: number; // stats a shallow copy would use (the same as the prototype)
 }
 
 export interface Enemy {

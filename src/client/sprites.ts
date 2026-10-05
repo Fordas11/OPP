@@ -1,4 +1,5 @@
 import { SWING_TIME } from '../shared/constants.js';
+import { BASE_REACH } from '../shared/weapon.js';
 import type { Enemy, Player } from '../shared/types.js';
 
 export const CAPE_COLORS = ['#9f3e43', '#3e6b9f', '#3e9f5a', '#c9a23a']; // red, blue, green, yellow: one per player
@@ -121,6 +122,7 @@ export function drawKnight(ctx: CanvasRenderingContext2D, p: Player): void {
 
 /** The sword points at the mouse. During an attack it sweeps across in a slash. */
 function drawSword(ctx: CanvasRenderingContext2D, p: Player): void {
+  const length = SWORD_LENGTH * (p.weapon.reach / BASE_REACH); // upgrades make the sword visibly longer
   const swinging = p.attack > 0;
   const progress = swinging ? 1 - p.attack / SWING_TIME : 0; // 0 at the start of the swing, 1 at the end
   const eased = 1 - (1 - progress) ** 2; // fast start, slow finish
@@ -135,7 +137,7 @@ function drawSword(ctx: CanvasRenderingContext2D, p: Player): void {
     ctx.lineWidth = 8;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.arc(0, 0, SWORD_LENGTH - 4, startAngle, angle);
+    ctx.arc(0, 0, length - 4, startAngle, angle);
     ctx.stroke();
     ctx.lineCap = 'butt';
   }
@@ -145,7 +147,7 @@ function drawSword(ctx: CanvasRenderingContext2D, p: Player): void {
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(7, 0);
-  ctx.lineTo(SWORD_LENGTH, 0);
+  ctx.lineTo(length, 0);
   ctx.stroke();
   ctx.strokeStyle = '#6b422b';
   ctx.lineWidth = 5;

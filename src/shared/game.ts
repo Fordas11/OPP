@@ -7,10 +7,11 @@ import type { Enemy, GameState, Player, PlayerInput } from './types.js';
 import { strategyFor } from './enemyStrategies.js';
 import { EffectObserver, GameEventPublisher } from './gameEvents.js';
 import { themeForLevel, visualsFrom, type ThemeFactory } from './themeFactory.js';
-import { FLOOR_UPGRADES, SWORD_PROTOTYPE, type Weapon } from './weapon.js';
+import { objectId, UPGRADES, SWORD_PROTOTYPE, type Sword, type Weapon } from './weapon.js';
 
 const NO_INPUT: PlayerInput = { up: false, down: false, left: false, right: false, aim: 0, attack: false };
 const LAST_LEVEL = 5;
+const KILLS_PER_UPGRADE = 3;
 
 /** The whole co-op game. The server calls update() many times per second. */
 export class Game {
@@ -18,7 +19,9 @@ export class Game {
   private readonly settings: { sight: number; damage: number };
   private readonly inputs = new Map<number, PlayerInput>();
   private readonly events = new GameEventPublisher();
-  private readonly weapons = new Map<number, Weapon>(); // each player has their own weapon
+  private readonly weapons = new Map<number, Weapon>(); // each player's current weapon (with upgrades)
+  private readonly swords = new Map<number, Sword>(); // the plain sword inside it, copied from the prototype
+  private readonly upgradesEarned = new Map<number, number>(); // how many upgrades each weapon already has
   private theme: ThemeFactory;
 
   public constructor(difficulty: Difficulty, playerIds: number[]) {
@@ -43,9 +46,11 @@ export class Game {
     this.events.subscribe(new EffectObserver(this.state, () => this.theme.createEffectAppearance().hitColor));
     for (const id of playerIds) {
       this.inputs.set(id, { ...NO_INPUT });
-      this.weapons.set(id, SWORD_PROTOTYPE.clone()); // Prototype: copy the ready sword
+      const sword = SWORD_PROTOTYPE.clone(); // Prototype: copy the ready sword
+      this.swords.set(id, sword);
+      this.weapons.set(id, sword);
     }
-    this.state.players.forEach(player => { player.weapon = this.weapons.get(player.id)!.name(); });
+    this.state.players.forEach(player => this.describeWeapon(player));
   }
 
   /** Takes a player out of the game, for example when their browser disconnects. */
@@ -53,6 +58,8 @@ export class Game {
     this.state.players = this.state.players.filter(p => p.id !== playerId);
     this.inputs.delete(playerId);
     this.weapons.delete(playerId);
+    this.swords.delete(playerId);
+    this.upgradesEarned.delete(playerId);
   }
 
   /** Stores the newest input. A click is remembered until the next update uses it. */
@@ -101,24 +108,39 @@ export class Game {
     state.hearts = createHearts(state.level, layout.tiles, [...layout.iceTiles, ...layout.fireTiles, ...layout.healingTiles]);
     state.enemies = createEnemies(state.level, state.maze, state.players.length);
     state.players.forEach((player, index) => Object.assign(player, playerSpawn(index)));
-    this.upgradeWeapons();
     state.banner = 2.2;
   }
 
-  /** Decorator: every new floor wraps each player's weapon in one more upgrade. */
-  private upgradeWeapons(): void {
-    const Upgrade = FLOOR_UPGRADES[this.state.level - 2];
-    if (!Upgrade) return;
-    for (const player of this.state.players) {
-      const weapon = new Upgrade(this.weapons.get(player.id)!);
-      this.weapons.set(player.id, weapon);
-      player.weapon = weapon.name();
+  /** Decorator: every few kills wrap the player's weapon in one more upgrade, so each knight's weapon is different. */
+  private upgradeWeapon(player: Player): void {
+    const earned = Math.min(Math.floor(player.kills / KILLS_PER_UPGRADE), UPGRADES.length);
+    let have = this.upgradesEarned.get(player.id) ?? 0;
+    while (have < earned) {
+      const Upgrade = UPGRADES[have++];
+      this.weapons.set(player.id, new Upgrade(this.weapons.get(player.id)!));
     }
+    this.upgradesEarned.set(player.id, have);
+    this.describeWeapon(player);
+  }
+
+  /** Copies the weapon's numbers into the player, so the browsers can show them. */
+  private describeWeapon(player: Player): void {
+    const weapon = this.weapons.get(player.id)!;
+    const sword = this.swords.get(player.id)!;
+    player.weapon = {
+      name: weapon.name(),
+      damage: weapon.damage(),
+      reach: weapon.reach(),
+      swordId: objectId(sword),
+      statsId: objectId(sword.stats),
+      prototypeStatsId: objectId(SWORD_PROTOTYPE.stats),
+      shallowStatsId: objectId(SWORD_PROTOTYPE.shallowClone().stats),
+    };
   }
 
   private createPlayer(id: number, index: number): Player {
     const { x, y } = playerSpawn(index);
-    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0, weapon: '' };
+    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0, kills: 0, weapon: { name: '', damage: 0, reach: 0, swordId: 0, statsId: 0, prototypeStatsId: 0, shallowStatsId: 0 } };
   }
 
   private updatePlayer(player: Player, dt: number): void {
@@ -177,11 +199,14 @@ export class Game {
       this.events.notify({ type: 'enemy-hit', x: enemy.x, y: enemy.y });
     }
 
+    const before = state.enemies.length;
     state.enemies = state.enemies.filter(enemy => {
       if (enemy.hp > 0) return true;
       this.events.notify({ type: 'enemy-defeated', x: enemy.x, y: enemy.y });
       return false;
     });
+    player.kills += before - state.enemies.length; // everything removed here was just killed by this swing
+    this.upgradeWeapon(player);
   }
 
   private updateEnemy(enemy: Enemy, dt: number): void {

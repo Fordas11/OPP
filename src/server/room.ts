@@ -78,7 +78,7 @@ export class Room {
   private tick(): void {
     if (!this.game) return;
     this.game.update(1 / TICK_RATE);
-    for (const member of this.members) member.connection.send({ type: 'state', state: this.game.state });
+    for (const member of this.members) member.connection.send({ type: 'state', state: this.game.state, adapterSent: member.connection.sent });
   }
 
   private sendLobby(): void {

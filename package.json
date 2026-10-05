@@ -4,8 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && node dist/server/server.js",
-    "demo": "npm run build && node dist/demo/patternsDemo.js"
+    "start": "npm run build && node dist/server/server.js"
   },
   "dependencies": {
     "ws": "^8.18.0"

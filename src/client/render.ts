@@ -18,7 +18,7 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: GameState, myId: 
   for (const player of state.players) {
     if (player.hp <= 0) continue;
     drawKnight(ctx, player);
-    if (player.id === myId) drawYouMarker(ctx, player.x, player.y, player.weapon);
+    if (player.id === myId) drawYouMarker(ctx, player.x, player.y, player.weapon.name);
   }
 
   drawEffects(ctx, W, H);

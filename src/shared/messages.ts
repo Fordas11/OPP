@@ -14,5 +14,5 @@ export type ServerMessage =
   // Sent to everyone in the room while it waits for players.
   | { type: 'lobby'; code: string; players: number; isHost: boolean }
   | { type: 'game-started'; you: number }
-  | { type: 'state'; state: GameState }
+  | { type: 'state'; state: GameState; adapterSent: number } // adapterSent: messages sent to this player so far
   | { type: 'error'; message: string };
