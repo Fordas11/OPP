@@ -1,4 +1,4 @@
-import { ARENA_HEIGHT as H, ARENA_WIDTH as W } from '../shared/constants.js';
+import { ARENA_HEIGHT as H } from '../shared/constants.js';
 import type { GameState } from '../shared/types.js';
 import { CAPE_COLORS } from './sprites.js';
 

@@ -228,7 +228,6 @@ export class Game {
       this.events.notify({ type: 'player-hit', x: victim.x, y: victim.y });
     }
   }
-
 }
 
 function nearest(from: Enemy, players: Player[]): Player | undefined {

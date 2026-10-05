@@ -62,10 +62,6 @@ export function cellCenters(maze: string[]): Point[] {
   return cells;
 }
 
-/**
- * Builds a new random maze. Every floor tile can be reached from every other one,
- * and the middle always has a small open room for the players.
- */
 /** Product assembled step by step by a builder. */
 export interface MazeBuilder {
   createEmptyGrid(): void;
@@ -143,9 +139,6 @@ export class MazeDirector {
   }
 }
 
-export function createMaze(open = false): string[] {
-  return createMazeLayout(open ? 'ice' : 'classic').tiles;
-}
 export function createMazeLayout(variant: MazeVariant = 'classic'): MazeLayout {
   const builders: Record<MazeVariant, MazeBuilder> = {
     classic: new ClassicMazeBuilder(), ice: new OpenMazeBuilder(), 'ice-healing': new IceHealingMazeBuilder(),

@@ -13,7 +13,6 @@ body {
 body { display: grid; place-content: center; }
 /* The arena is a fixed 16:10 area, scaled to fit the window. */
 .game-frame { position: relative; width: min(100vw, 160vh); height: min(100vh, 62.5vw); overflow: hidden; }
-.subtitle { margin: 0 0 6px; letter-spacing: .2em; text-transform: uppercase; font-size: 12px; }
 .message { min-height: 18px; color: #e07a6e !important; font-size: 13px; }
 .room-code { margin: 14px 0 !important; color: #f3d58b !important; font: 800 64px Cinzel, serif; letter-spacing: .25em; }
 .menu-actions .hidden { display: none; }

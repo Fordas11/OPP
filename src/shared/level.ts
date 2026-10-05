@@ -39,7 +39,6 @@ export function createEnemies(level: number, maze: string[], playerCount: number
   return enemies;
 }
 
-/** Health pickups never appear inside the protected start room. */
 /** Hearts only appear on ordinary floor, never on a hazard or healing tile. */
 export function createHearts(level: number, maze: string[], specialTiles: IceTile[] = []): HeartPickup[] {
   const start = startPoint();
