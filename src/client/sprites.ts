@@ -44,13 +44,6 @@ export function drawSkeleton(ctx: CanvasRenderingContext2D, e: Enemy, color = '#
   ctx.moveTo(8, 16); ctx.lineTo(11, 25);
   ctx.stroke();
   ctx.restore();
-
-  if (e.hp < e.maxHp) {
-    ctx.fillStyle = '#2b2430';
-    ctx.fillRect(e.x - 15, e.y - 34, 30, 4);
-    ctx.fillStyle = '#b94c49';
-    ctx.fillRect(e.x - 15, e.y - 34, (30 * e.hp) / e.maxHp, 4);
-  }
 }
 
 /** Factory product has a matching small, quick-looking concrete drawing. */

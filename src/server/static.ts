@@ -19,7 +19,8 @@ export async function serveFile(request: IncomingMessage, response: ServerRespon
     if (!file.startsWith(folder)) continue; // blocks ../ tricks
     try {
       const content = await readFile(file);
-      response.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' });
+      // no-cache: the browser always checks for a newer build instead of reusing old scripts
+      response.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-cache' });
       response.end(content);
       return;
     } catch {

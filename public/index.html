@@ -72,6 +72,7 @@
             <span>Attack</span><button class="binding-button" data-bind="attack"></button>
           </div>
           <p id="bindingHint" class="setting-hint"></p>
+          <button id="resetBindings" class="settings-action">Reset keybinds</button>
         </section>
         <section class="settings-section">
           <h3>Difficulty</h3>
@@ -81,6 +82,17 @@
             <button data-difficulty="brutal"><strong>Brutal</strong><small>Long sight · 2 damage</small></button>
           </div>
           <p class="setting-hint">Difficulty applies to rooms you create.</p>
+        </section>
+        <section class="settings-section">
+          <h3>Health bars</h3>
+          <div id="barStyleOptions" class="difficulty-options two-options">
+            <button data-bar-style="solid"><strong>Solid</strong><small>One smooth bar</small></button>
+            <button data-bar-style="segmented"><strong>Segmented</strong><small>One block per hit point</small></button>
+          </div>
+        </section>
+        <section class="settings-section">
+          <button id="undoSettings" class="settings-action">Undo (Ctrl+Z)</button>
+          <p id="historyHint" class="setting-hint"></p>
         </section>
       </div>
     </div>

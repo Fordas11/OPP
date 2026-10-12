@@ -2,6 +2,8 @@ import { ARENA_HEIGHT as H, ARENA_WIDTH as W } from '../shared/constants.js';
 import type { GameState } from '../shared/types.js';
 import { drawEffects } from './effects.js';
 import { isWall, MAZE_COLS, MAZE_LEFT, MAZE_ROWS, MAZE_TOP, TILE } from '../shared/maze.js';
+import { BAR_STYLES, EnemyHealthBar, PlayerHealthBar } from './healthBars.js';
+import { settings } from './settings.js';
 import { CAPE_COLORS, drawKnight, drawSkeleton } from './sprites.js';
 
 /** Draws one frame of the game. `myId` is the player controlled in this browser. */
@@ -13,7 +15,11 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: GameState, myId: 
   drawMaze(ctx, state.maze, state.iceTiles, state.fireTiles, state.healingTiles, state.themeVisuals.wallColor);
   drawTopBar(ctx, state, myId);
 
-  [...state.enemies].sort((a, b) => a.y - b.y).forEach(e => drawSkeleton(ctx, e, state.themeVisuals.enemyColor));
+  const enemyBar = new EnemyHealthBar(BAR_STYLES[settings.barStyle]);
+  [...state.enemies].sort((a, b) => a.y - b.y).forEach(e => {
+    drawSkeleton(ctx, e, state.themeVisuals.enemyColor);
+    enemyBar.draw(ctx, e.x, e.y - e.r - 18, e.hp, e.maxHp); // Bridge: same bar abstraction, style from settings
+  });
   state.hearts.forEach(heart => drawHeart(ctx, heart.x, heart.y));
   for (const player of state.players) {
     if (player.hp <= 0) continue;
@@ -96,24 +102,12 @@ function drawTopBar(ctx: CanvasRenderingContext2D, state: GameState, myId: numbe
 
   // One health bar per player, in that player's knight color. Your own bar has a gold outline.
   const players = [...state.players].sort((a, b) => a.id - b.id);
+  // Bridge: the bar (player) and its painting style (from settings) are chosen separately.
+  const style = BAR_STYLES[settings.barStyle];
   players.forEach((player, index) => {
-    drawHealthBar(ctx, 330 + index * 150, player.id, player.hp, player.maxHp, player.id === myId);
+    const bar = new PlayerHealthBar(style, CAPE_COLORS[player.id % CAPE_COLORS.length], player.id === myId);
+    bar.draw(ctx, 330 + index * 150, 25, player.hp, player.maxHp);
   });
-}
-
-function drawHealthBar(ctx: CanvasRenderingContext2D, x: number, id: number, hp: number, maxHp: number, isMe: boolean): void {
-  const color = CAPE_COLORS[id % CAPE_COLORS.length];
-  const fill = Math.max(0, hp) / maxHp;
-
-  ctx.fillStyle = color;
-  ctx.fillRect(x, 26, 10, 10); // color swatch, matches the knight's cape
-  ctx.fillStyle = '#312939';
-  ctx.fillRect(x + 16, 25, 105, 12);
-  ctx.fillStyle = fill > 0 ? color : '#312939';
-  ctx.fillRect(x + 18, 27, 101 * fill, 8);
-  ctx.strokeStyle = isMe ? '#f3d58b' : '#938071';
-  ctx.lineWidth = isMe ? 2 : 1;
-  ctx.strokeRect(x + 16.5, 24.5, 105, 13);
 }
 
 function drawYouMarker(ctx: CanvasRenderingContext2D, x: number, y: number, weapon: string): void {

@@ -48,6 +48,10 @@ button:hover { background: #ad5050; transform: translate(-1px, -1px); box-shadow
 .difficulty-options button { min-height: 75px; margin: 0; padding: 9px 6px; border-color: #554d60; background: #272231; box-shadow: none; color: #d9d1d7; font: 12px "DM Mono", monospace; }
 .difficulty-options button:hover { background: #383143; box-shadow: none; transform: none; }
 .difficulty-options button.active { border-color: #e1c477; background: #57393c; color: #fff0bd; }
+.difficulty-options.two-options { grid-template-columns: repeat(2, 1fr); }
 .difficulty-options strong, .difficulty-options small { display: block; }
+.settings-action { margin: 10px 0 0; padding: 7px 12px; border-color: #5b5266; background: #282334; box-shadow: none; color: #f0dfae; font: 12px "DM Mono", monospace; }
+.settings-action:hover { background: #493a4b; box-shadow: none; transform: none; }
+.settings-action:disabled { opacity: .45; cursor: default; }
 .difficulty-options small { margin-top: 7px; color: inherit; font-size: 9px; line-height: 1.35; opacity: .8; }
 @media (max-width: 650px) { .settings-card { padding: 19px; } }
