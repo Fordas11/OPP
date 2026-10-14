@@ -3,7 +3,6 @@ import type { ServerMessage } from '../shared/messages.js';
 
 /** Target: the only thing a room needs from a player's connection. */
 export interface Connection {
-  readonly sent: number; // how many messages went through this connection
   send(message: ServerMessage): void;
 }
 
@@ -12,13 +11,10 @@ export interface Connection {
  * The adapter gives the game one simple send(message) and does the JSON and "is it open" work.
  */
 export class WebSocketAdapter implements Connection {
-  public sent = 0;
-
   public constructor(private readonly socket: WebSocket) {}
 
   public send(message: ServerMessage): void {
     if (this.socket.readyState !== this.socket.OPEN) return;
     this.socket.send(JSON.stringify(message));
-    this.sent++;
   }
 }

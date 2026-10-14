@@ -1,7 +1,6 @@
 import { TICK_RATE } from '../shared/constants.js';
 import { KeyboardController, MenuController } from './controllers.js';
 import { updateEffects } from './effects.js';
-import { drawPatternsHint, drawPatternsPanel } from './patternsPanel.js';
 import { drawGame } from './render.js';
 import { GameSession } from './session.js';
 import { loadSettings } from './settings.js';
@@ -12,7 +11,7 @@ const ctx = canvas.getContext('2d')!;
 // Facade: both controllers use the same GameSession and nothing behind it.
 const session = new GameSession();
 new MenuController(session);
-const keyboard = new KeyboardController(session, canvas);
+new KeyboardController(session, canvas);
 
 // ---------- Main loops ----------
 
@@ -28,8 +27,6 @@ function frame(time: number): void {
   const state = session.gameState;
   if (state) {
     drawGame(ctx, state, session.playerId);
-    drawPatternsHint(ctx);
-    if (keyboard.showPatterns) drawPatternsPanel(ctx, state, session.playerId, session.messagesFromAdapter);
   }
   else ctx.clearRect(0, 0, canvas.width, canvas.height);
 

@@ -25,8 +25,6 @@ export class MenuController {
 
 /** Facade client 2: keyboard and mouse during the game. */
 export class KeyboardController {
-  public showPatterns = false;
-
   public constructor(private readonly session: GameSession, canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', event => this.onKeyDown(event));
     window.addEventListener('keyup', event => session.releaseKey(event.code));
@@ -37,9 +35,12 @@ export class KeyboardController {
 
     canvas.addEventListener('mousemove', event => session.moveMouse(event, canvas));
     canvas.addEventListener('mousedown', event => {
-      if (!session.isPlaying() || `Mouse${event.button}` !== settings.bindings.attack) return;
+      if (!session.isPlaying()) return;
+      const button = `Mouse${event.button}`;
+      if (button === settings.bindings.attack) session.attack();
+      else if (button === settings.bindings.shoot) session.shoot();
+      else return;
       event.preventDefault();
-      session.attack();
     });
     canvas.addEventListener('contextmenu', event => event.preventDefault());
   }
@@ -54,11 +55,6 @@ export class KeyboardController {
       return;
     }
     if (!this.session.isPlaying()) return;
-
-    if (event.code === 'KeyP') {
-      this.showPatterns = !this.showPatterns;
-      return;
-    }
 
     event.preventDefault();
     this.session.pressKey(event.code);

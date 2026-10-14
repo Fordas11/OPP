@@ -111,7 +111,7 @@ export class IceHealingMazeBuilder extends OpenMazeBuilder {
 /** Concrete Builder 3: lava floor; stepping on a flame is immediately fatal. */
 export class FireMazeBuilder extends BaseMazeBuilder {
   public addExtraOpenings(): void { openExtraWalls(this.wall, 0.18); }
-  public override addSpecialTiles(): void { this.fireTiles = chooseSpecialTiles(this.wall, 0.22); }
+  public override addSpecialTiles(): void { this.fireTiles = chooseFireTiles(this.wall, 0.22); }
 }
 
 export class FireIceMazeBuilder extends FireMazeBuilder {
@@ -150,6 +150,36 @@ export function isIceAt(iceTiles: IceTile[], x: number, y: number): boolean {
   const col = Math.floor((x - MAZE_LEFT) / TILE);
   const row = Math.floor((y - MAZE_TOP) / TILE);
   return iceTiles.some(tile => tile.col === col && tile.row === row);
+}
+
+/** Like chooseSpecialTiles, but a flame is skipped when it would cut off part of the maze, so every skeleton can be reached. */
+function chooseFireTiles(wall: boolean[][], chance: number): IceTile[] {
+  const fire: IceTile[] = [];
+  for (const tile of chooseSpecialTiles(wall, chance)) {
+    fire.push(tile);
+    if (!isMazeConnected(wall, fire)) fire.pop();
+  }
+  return fire;
+}
+
+/** True when every floor tile can be reached from the start room without stepping on a flame. */
+function isMazeConnected(wall: boolean[][], fire: IceTile[]): boolean {
+  const blocked = (col: number, row: number) => wall[row][col] || fire.some(tile => tile.col === col && tile.row === row);
+  const seen = new Set<number>();
+  const queue = [{ col: CENTER_COL, row: CENTER_ROW }];
+  seen.add(CENTER_ROW * MAZE_COLS + CENTER_COL);
+  while (queue.length > 0) {
+    const { col, row } = queue.pop()!;
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const c = col + dc; const r = row + dr;
+      if (c < 0 || r < 0 || c >= MAZE_COLS || r >= MAZE_ROWS || blocked(c, r) || seen.has(r * MAZE_COLS + c)) continue;
+      seen.add(r * MAZE_COLS + c);
+      queue.push({ col: c, row: r });
+    }
+  }
+  let open = 0;
+  for (let row = 0; row < MAZE_ROWS; row++) for (let col = 0; col < MAZE_COLS; col++) if (!wall[row][col] && !fire.some(tile => tile.col === col && tile.row === row)) open++;
+  return seen.size === open;
 }
 
 function chooseSpecialTiles(wall: boolean[][], chance: number): IceTile[] {

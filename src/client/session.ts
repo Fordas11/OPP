@@ -18,11 +18,9 @@ export class GameSession {
   private readonly input = new InputState();
   private myId = 0;
   private state: GameState | null = null;
-  private adapterSent = 0; // messages the server's WebSocketAdapter has sent to us
 
   public get playerId(): number { return this.myId; }
   public get gameState(): GameState | null { return this.state; }
-  public get messagesFromAdapter(): number { return this.adapterSent; }
 
   // ---------- Used by MenuController ----------
 
@@ -68,6 +66,7 @@ export class GameSession {
   public releaseAllKeys(): void { this.input.releaseAllKeys(); }
   public moveMouse(event: MouseEvent, canvas: HTMLCanvasElement): void { this.input.moveMouse(event, canvas); }
   public attack(): void { this.input.requestAttack(); }
+  public shoot(): void { this.input.requestShoot(); }
 
   /** Sends our keys and mouse to the server. Called as often as the server runs its ticks. */
   public sendInput(): void {
@@ -100,7 +99,6 @@ export class GameSession {
         this.screens.showScreen('playing');
         break;
       case 'state':
-        this.adapterSent = message.adapterSent;
         this.onState(message.state);
         break;
       case 'error':

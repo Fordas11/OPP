@@ -10,7 +10,7 @@ const barStyleButtons = document.querySelectorAll<HTMLButtonElement>('#barStyleO
 const undoButton = document.querySelector<HTMLButtonElement>('#undoSettings')!;
 const historyHint = document.querySelector<HTMLElement>('#historyHint')!;
 
-const DEFAULT_HINT = 'Select a binding, then press a key. Attack can also use a mouse button.';
+const DEFAULT_HINT = 'Select a binding, then press a key. Attack and bow can also use a mouse button.';
 // Command pattern: this panel is the Client. It creates commands with the receiver and gives them to the invoker.
 const receiver = new SettingsReceiver();
 const history = new CommandHistory();
@@ -56,7 +56,7 @@ export function handleBindingMouse(event: MouseEvent): boolean {
   if (!waitingFor) return false;
   event.preventDefault();
   event.stopPropagation();
-  if (waitingFor === 'attack') finishBinding(`Mouse${event.button}`);
+  if (waitingFor === 'attack' || waitingFor === 'shoot') finishBinding(`Mouse${event.button}`);
   else hint.textContent = 'Movement bindings use keyboard keys.';
   return true;
 }

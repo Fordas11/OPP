@@ -8,10 +8,12 @@ export class InputState {
   private readonly pressedKeys = new Set<string>();
   private readonly mouse: Point = { x: 0, y: 0 }; // in arena coordinates
   private attackRequested = false;
+  private shootRequested = false;
 
   public pressKey(code: string): void {
     this.pressedKeys.add(code);
     if (code === settings.bindings.attack) this.attackRequested = true;
+    if (code === settings.bindings.shoot) this.shootRequested = true;
   }
 
   public releaseKey(code: string): void {
@@ -24,6 +26,10 @@ export class InputState {
 
   public requestAttack(): void {
     this.attackRequested = true;
+  }
+
+  public requestShoot(): void {
+    this.shootRequested = true;
   }
 
   /** Remembers where the mouse is inside the arena. */
@@ -43,8 +49,10 @@ export class InputState {
       right: this.pressedKeys.has(bindings.right),
       aim: Math.atan2(this.mouse.y - position.y, this.mouse.x - position.x),
       attack: this.attackRequested,
+      shoot: this.shootRequested,
     };
     this.attackRequested = false;
+    this.shootRequested = false;
     return input;
   }
 }

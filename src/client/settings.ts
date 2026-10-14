@@ -1,6 +1,6 @@
 import { isDifficulty, type Difficulty } from '../shared/constants.js';
 
-export type Action = 'up' | 'down' | 'left' | 'right' | 'attack';
+export type Action = 'up' | 'down' | 'left' | 'right' | 'attack' | 'shoot';
 export type BarStyleName = 'solid' | 'segmented';
 
 const STORAGE_KEY = 'dungeon-crawler-settings';
@@ -11,6 +11,7 @@ export const DEFAULT_BINDINGS: Record<Action, string> = {
   left: 'KeyA',
   right: 'KeyD',
   attack: 'Mouse0',
+  shoot: 'Mouse2',
 };
 
 export const settings: { bindings: Record<Action, string>; difficulty: Difficulty; barStyle: BarStyleName } = {

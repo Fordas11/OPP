@@ -1,4 +1,5 @@
 import { ARENA_HEIGHT as H, ARENA_WIDTH as W } from '../shared/constants.js';
+import { MAX_BOUNCES, type ArrowState } from '../shared/arrow.js';
 import type { GameState } from '../shared/types.js';
 import { drawEffects } from './effects.js';
 import { isWall, MAZE_COLS, MAZE_LEFT, MAZE_ROWS, MAZE_TOP, TILE } from '../shared/maze.js';
@@ -21,6 +22,7 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: GameState, myId: 
     enemyBar.draw(ctx, e.x, e.y - e.r - 18, e.hp, e.maxHp); // Bridge: same bar abstraction, style from settings
   });
   state.hearts.forEach(heart => drawHeart(ctx, heart.x, heart.y));
+  state.arrows.forEach(arrow => drawArrow(ctx, arrow));
   for (const player of state.players) {
     if (player.hp <= 0) continue;
     drawKnight(ctx, player);
@@ -108,6 +110,37 @@ function drawTopBar(ctx: CanvasRenderingContext2D, state: GameState, myId: numbe
     const bar = new PlayerHealthBar(style, CAPE_COLORS[player.id % CAPE_COLORS.length], player.id === myId);
     bar.draw(ctx, 330 + index * 150, 25, player.hp, player.maxHp);
   });
+
+  const me = state.players.find(p => p.id === myId);
+  if (me) {
+    ctx.textAlign = 'right';
+    ctx.font = '13px DM Mono';
+    ctx.fillStyle = me.ammo > 0 ? '#e8dcb9' : '#d46a5f';
+    ctx.fillText(`ARROWS ${me.ammo}/${me.maxAmmo}`, W - 25, 36);
+    ctx.textAlign = 'left';
+  }
+}
+
+/** An arrow flying in its current direction. It gets paler with every bounce it has used. */
+function drawArrow(ctx: CanvasRenderingContext2D, arrow: ArrowState): void {
+  ctx.save();
+  ctx.translate(arrow.x, arrow.y);
+  ctx.rotate(arrow.angle);
+  ctx.strokeStyle = '#e5d6a2';
+  ctx.globalAlpha = 0.55 + 0.45 * (arrow.bouncesLeft / MAX_BOUNCES);
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-12, 0);
+  ctx.lineTo(8, 0);
+  ctx.stroke();
+  ctx.fillStyle = '#f4f0e0';
+  ctx.beginPath();
+  ctx.moveTo(14, 0);
+  ctx.lineTo(6, -4);
+  ctx.lineTo(6, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawYouMarker(ctx: CanvasRenderingContext2D, x: number, y: number, weapon: string): void {

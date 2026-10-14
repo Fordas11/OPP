@@ -21,10 +21,14 @@ export function playerSpawn(index: number): Point {
 }
 
 /** Skeletons, placed in random maze cells away from the players' start room. More players means more skeletons. */
-export function createEnemies(level: number, maze: string[], playerCount: number): Enemy[] {
+export function createEnemies(level: number, maze: string[], playerCount: number, hazardTiles: IceTile[] = []): Enemy[] {
   const start = startPoint();
   const spots = cellCenters(maze)
     .filter(cell => Math.hypot(cell.x - start.x, cell.y - start.y) >= MIN_DISTANCE_FROM_START)
+    .filter(cell => !hazardTiles.some(tile => {
+      const center = tileCenter(tile.col, tile.row);
+      return cell.x === center.x && cell.y === center.y;
+    })) // never on a flame
     .sort(() => Math.random() - 0.5);
 
   const enemies: Enemy[] = [];

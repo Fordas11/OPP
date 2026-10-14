@@ -1,8 +1,5 @@
 export const BASE_REACH = 83;
 
-/** Numbers that describe a weapon. Kept in a separate object so copying it shows deep vs shallow. */
-export interface WeaponStats { damage: number; reach: number }
-
 /** What the game needs from a weapon. Both the base sword and every upgrade look like this. */
 export interface Weapon {
   name(): string;
@@ -10,29 +7,11 @@ export interface Weapon {
   reach(): number;
 }
 
-/** Prototype pattern: one ready sword is copied for every player with clone(). */
+/** The plain sword every knight starts with. Upgrades wrap it (see the decorators below). */
 export class Sword implements Weapon {
-  public constructor(public readonly stats: WeaponStats = { damage: 1, reach: BASE_REACH }) {}
-
   public name(): string { return 'Sword'; }
-  public damage(): number { return this.stats.damage; }
-  public reach(): number { return this.stats.reach; }
-
-  /** Deep copy: the new sword gets its own stats object. This is the one the game uses. */
-  public clone(): Sword { return new Sword(structuredClone(this.stats)); }
-
-  /** Shallow copy: the new sword shares the SAME stats object. Only used to compare with clone(). */
-  public shallowClone(): Sword { return new Sword(this.stats); }
-}
-
-export const SWORD_PROTOTYPE = new Sword();
-
-/** JavaScript has no memory addresses, so each object gets a number the first time it is asked for. */
-const ids = new WeakMap<object, number>();
-let lastId = 0;
-export function objectId(value: object): number {
-  if (!ids.has(value)) ids.set(value, ++lastId);
-  return ids.get(value)!;
+  public damage(): number { return 1; }
+  public reach(): number { return BASE_REACH; }
 }
 
 /** Decorator pattern: wraps a weapon and changes one number, without touching the weapon inside. */

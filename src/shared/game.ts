@@ -1,17 +1,21 @@
 import { DIFFICULTIES, SWING_TIME, type Difficulty } from './constants.js';
 import { createEnemies, createHearts, playerSpawn } from './level.js';
-import { createMazeLayout } from './maze.js';
+import { createMazeLayout, isWallAt } from './maze.js';
 import { distance } from './math.js';
+import { ARROW_PROTOTYPE, SPLIT_ANGLE, SPLIT_FROM_LEVEL, type Arrow } from './arrow.js';
 import { canSee, hasClearLine, moveBody } from './movement.js';
 import type { Enemy, GameState, Player, PlayerInput } from './types.js';
 import { strategyFor } from './enemyStrategies.js';
 import { EffectObserver, GameEventPublisher } from './gameEvents.js';
 import { themeForLevel, visualsFrom, type ThemeFactory } from './themeFactory.js';
-import { objectId, UPGRADES, SWORD_PROTOTYPE, type Sword, type Weapon } from './weapon.js';
+import { Sword, UPGRADES, type Weapon } from './weapon.js';
 
-const NO_INPUT: PlayerInput = { up: false, down: false, left: false, right: false, aim: 0, attack: false };
+const NO_INPUT: PlayerInput = { up: false, down: false, left: false, right: false, aim: 0, attack: false, shoot: false };
 const LAST_LEVEL = 5;
 const KILLS_PER_UPGRADE = 3;
+const MAX_AMMO = 20;
+const SHOOT_COOLDOWN = 0.3;
+const ARROW_STEP = 8; // arrows move in small steps so they cannot jump through a wall
 
 /** The whole co-op game. The server calls update() many times per second. */
 export class Game {
@@ -20,8 +24,8 @@ export class Game {
   private readonly inputs = new Map<number, PlayerInput>();
   private readonly events = new GameEventPublisher();
   private readonly weapons = new Map<number, Weapon>(); // each player's current weapon (with upgrades)
-  private readonly swords = new Map<number, Sword>(); // the plain sword inside it, copied from the prototype
   private readonly upgradesEarned = new Map<number, number>(); // how many upgrades each weapon already has
+  private arrows: Arrow[] = [];
   private theme: ThemeFactory;
 
   public constructor(difficulty: Difficulty, playerIds: number[]) {
@@ -33,22 +37,21 @@ export class Game {
       phase: 'playing',
       banner: 2.2,
       players: playerIds.map((id, index) => this.createPlayer(id, index)),
-      enemies: createEnemies(1, layout.tiles, playerIds.length),
+      enemies: createEnemies(1, layout.tiles, playerIds.length, layout.fireTiles),
       maze: layout.tiles,
       iceTiles: layout.iceTiles,
       fireTiles: layout.fireTiles,
       healingTiles: layout.healingTiles,
       hearts: createHearts(1, layout.tiles, [...layout.iceTiles, ...layout.fireTiles, ...layout.healingTiles]),
       effects: [],
+      arrows: [],
       theme: this.theme.id,
       themeVisuals: visualsFrom(this.theme),
     };
     this.events.subscribe(new EffectObserver(this.state, () => this.theme.createEffectAppearance().hitColor));
     for (const id of playerIds) {
       this.inputs.set(id, { ...NO_INPUT });
-      const sword = SWORD_PROTOTYPE.clone(); // Prototype: copy the ready sword
-      this.swords.set(id, sword);
-      this.weapons.set(id, sword);
+      this.weapons.set(id, new Sword());
     }
     this.state.players.forEach(player => this.describeWeapon(player));
   }
@@ -58,8 +61,8 @@ export class Game {
     this.state.players = this.state.players.filter(p => p.id !== playerId);
     this.inputs.delete(playerId);
     this.weapons.delete(playerId);
-    this.swords.delete(playerId);
     this.upgradesEarned.delete(playerId);
+    this.arrows = this.arrows.filter(arrow => arrow.ownerId !== playerId);
   }
 
   /** Stores the newest input. A click is remembered until the next update uses it. */
@@ -73,6 +76,7 @@ export class Game {
       right: input.right === true,
       aim: Number.isFinite(input.aim) ? input.aim : 0,
       attack: old.attack || input.attack === true,
+      shoot: old.shoot || input.shoot === true,
     });
   }
 
@@ -83,6 +87,8 @@ export class Game {
 
     state.banner = Math.max(0, state.banner - dt);
     for (const player of state.players) this.updatePlayer(player, dt);
+    this.updateArrows(dt);
+    state.arrows = this.arrows;
     for (const enemy of state.enemies) this.updateEnemy(enemy, dt);
 
     if (state.players.every(p => p.hp <= 0)) {
@@ -106,8 +112,10 @@ export class Game {
     state.fireTiles = layout.fireTiles;
     state.healingTiles = layout.healingTiles;
     state.hearts = createHearts(state.level, layout.tiles, [...layout.iceTiles, ...layout.fireTiles, ...layout.healingTiles]);
-    state.enemies = createEnemies(state.level, state.maze, state.players.length);
-    state.players.forEach((player, index) => Object.assign(player, playerSpawn(index)));
+    state.enemies = createEnemies(state.level, state.maze, state.players.length, layout.fireTiles);
+    state.players.forEach((player, index) => Object.assign(player, playerSpawn(index), { ammo: player.maxAmmo })); // ammo comes back every floor
+    this.arrows = [];
+    state.arrows = [];
     state.banner = 2.2;
   }
 
@@ -126,21 +134,12 @@ export class Game {
   /** Copies the weapon's numbers into the player, so the browsers can show them. */
   private describeWeapon(player: Player): void {
     const weapon = this.weapons.get(player.id)!;
-    const sword = this.swords.get(player.id)!;
-    player.weapon = {
-      name: weapon.name(),
-      damage: weapon.damage(),
-      reach: weapon.reach(),
-      swordId: objectId(sword),
-      statsId: objectId(sword.stats),
-      prototypeStatsId: objectId(SWORD_PROTOTYPE.stats),
-      shallowStatsId: objectId(SWORD_PROTOTYPE.shallowClone().stats),
-    };
+    player.weapon = { name: weapon.name(), damage: weapon.damage(), reach: weapon.reach() };
   }
 
   private createPlayer(id: number, index: number): Player {
     const { x, y } = playerSpawn(index);
-    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0, kills: 0, weapon: { name: '', damage: 0, reach: 0, swordId: 0, statsId: 0, prototypeStatsId: 0, shallowStatsId: 0 } };
+    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0, kills: 0, weapon: { name: '', damage: 0, reach: 0 }, ammo: MAX_AMMO, maxAmmo: MAX_AMMO };
   }
 
   private updatePlayer(player: Player, dt: number): void {
@@ -169,6 +168,10 @@ export class Game {
     if (input.attack) {
       input.attack = false;
       this.swingSword(player);
+    }
+    if (input.shoot) {
+      input.shoot = false;
+      this.shootArrow(player);
     }
   }
 
@@ -199,14 +202,81 @@ export class Game {
       this.events.notify({ type: 'enemy-hit', x: enemy.x, y: enemy.y });
     }
 
+    this.creditKills(player);
+  }
+
+  /** Removes skeletons that just died and gives the kills (and weapon upgrades) to the knight who caused them. */
+  private creditKills(player: Player): void {
+    const state = this.state;
     const before = state.enemies.length;
     state.enemies = state.enemies.filter(enemy => {
       if (enemy.hp > 0) return true;
       this.events.notify({ type: 'enemy-defeated', x: enemy.x, y: enemy.y });
       return false;
     });
-    player.kills += before - state.enemies.length; // everything removed here was just killed by this swing
+    player.kills += before - state.enemies.length;
     this.upgradeWeapon(player);
+  }
+
+  /** Bow: a new arrow is a copy of the prototype arrow, so every shot starts with its own stats. */
+  private shootArrow(player: Player): void {
+    if (player.cooldown > 0 || player.ammo <= 0) return;
+    player.ammo--;
+    player.cooldown = SHOOT_COOLDOWN;
+
+    const startX = player.x + Math.cos(player.aim) * (player.r + 4);
+    const startY = player.y + Math.sin(player.aim) * (player.r + 4);
+    const blocked = isWallAt(this.state.maze, startX, startY); // standing against a wall: shoot from the body instead
+    this.arrows.push(ARROW_PROTOTYPE.clone().launch(player.id, blocked ? player.x : startX, blocked ? player.y : startY, player.aim));
+  }
+
+  private updateArrows(dt: number): void {
+    const flying: Arrow[] = [];
+    for (const arrow of this.arrows) this.flyArrow(arrow, dt, flying);
+    this.arrows = flying;
+  }
+
+  /** Moves one arrow. Survivors (and bounce copies) are added to `flying`. */
+  private flyArrow(arrow: Arrow, dt: number, flying: Arrow[]): void {
+    const { maze, enemies, players } = this.state;
+    const owner = players.find(p => p.id === arrow.ownerId)!; // arrows of a player who left are removed in removePlayer()
+    const total = arrow.stats.speed * dt;
+    const steps = Math.max(1, Math.ceil(total / ARROW_STEP));
+    const step = total / steps;
+    const copies: Arrow[] = [];
+
+    for (let i = 0; i < steps; i++) {
+      const nextX = arrow.x + Math.cos(arrow.angle) * step;
+      const nextY = arrow.y + Math.sin(arrow.angle) * step;
+
+      if (isWallAt(maze, nextX, nextY)) {
+        if (arrow.bouncesLeft <= 0) { flying.push(...copies); return; } // used all its bounces: the arrow breaks on the wall
+        const hitSide = isWallAt(maze, nextX, arrow.y); // the wall is to the left or right
+        const hitTop = isWallAt(maze, arrow.x, nextY); // the wall is above or below
+        if (hitSide && !hitTop) arrow.angle = Math.PI - arrow.angle;
+        else if (hitTop && !hitSide) arrow.angle = -arrow.angle;
+        else arrow.angle += Math.PI; // corner: bounce straight back
+        arrow.bouncesLeft--;
+        this.events.notify({ type: 'arrow-bounce', x: arrow.x, y: arrow.y });
+        // Prototype: from floor 5 the arrow doubles on every bounce. The copy only differs in its flight angle.
+        if (this.state.level >= SPLIT_FROM_LEVEL) copies.push(arrow.clone().turn(SPLIT_ANGLE));
+        continue; // stay at the last free spot and fly in the new direction next step
+      }
+
+      arrow.x = nextX;
+      arrow.y = nextY;
+      const target = enemies.find(enemy => distance(arrow, enemy) < enemy.r + 4);
+      if (target) {
+        target.hp -= arrow.stats.damage;
+        target.hit = 0.16;
+        moveBody(target, Math.cos(arrow.angle) * 12, Math.sin(arrow.angle) * 12, maze);
+        this.events.notify({ type: 'enemy-hit', x: target.x, y: target.y });
+        this.creditKills(owner);
+        flying.push(...copies); // copies made earlier in this tick keep flying
+        return;
+      }
+    }
+    flying.push(arrow, ...copies);
   }
 
   private updateEnemy(enemy: Enemy, dt: number): void {
