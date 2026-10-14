@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { isDifficulty } from '../shared/constants.js';
-import type { ClientMessage } from '../shared/messages.js';
+import { isDifficulty } from '../shared/core/constants.js';
+import type { ClientMessage } from '../shared/core/messages.js';
 import { createRoom, findRoom, joinRoom, leaveRoom } from './rooms.js';
 import { serveFile } from './static.js';
 

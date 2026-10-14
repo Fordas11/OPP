@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { ServerMessage } from '../shared/messages.js';
+import type { ServerMessage } from '../shared/core/messages.js';
 
 /** Target: the only thing a room needs from a player's connection. */
 export interface Connection {

@@ -1,6 +1,6 @@
-import { SWING_TIME } from '../shared/constants.js';
-import { BASE_REACH } from '../shared/weapon.js';
-import type { Enemy, Player } from '../shared/types.js';
+import { SWING_TIME } from '../../shared/core/constants.js';
+import { BASE_REACH } from '../../shared/weapons/weapon.js';
+import type { Enemy, Player } from '../../shared/core/types.js';
 
 export const CAPE_COLORS = ['#9f3e43', '#3e6b9f', '#3e9f5a', '#c9a23a']; // red, blue, green, yellow: one per player
 const SWORD_LENGTH = 46;

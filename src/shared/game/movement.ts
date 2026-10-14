@@ -1,5 +1,5 @@
-import { distance, type Point } from './math.js';
-import { hitsWall, isWallAt } from './maze.js';
+import { distance, type Point } from '../core/math.js';
+import { hitsWall, isWallAt } from '../maze/maze.js';
 
 interface Body extends Point {
   r: number;

@@ -1,4 +1,4 @@
-import type { BarStyleName } from './settings.js';
+import type { BarStyleName } from '../settings/settings.js';
 
 /**
  * Bridge pattern, implementation side: HOW a bar is painted.

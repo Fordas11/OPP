@@ -1,4 +1,4 @@
-import type { Effect, GameState } from './types.js';
+import type { Effect, GameState } from '../core/types.js';
 
 export type GameEvent = { type: 'enemy-hit'; x: number; y: number } | { type: 'enemy-defeated'; x: number; y: number } | { type: 'player-hit' | 'ice-damage' | 'fire-damage'; x: number; y: number } | { type: 'heart-collected' | 'healed' | 'arrow-bounce'; x: number; y: number };
 export interface GameEventObserver { update(event: GameEvent): void; }

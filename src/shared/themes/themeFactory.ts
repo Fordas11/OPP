@@ -1,6 +1,6 @@
-import type { EnemyKind } from './enemyFactory.js';
-import { isIceAt, type MazeVariant } from './maze.js';
-import type { IceTile, Player } from './types.js';
+import type { EnemyKind } from '../enemies/enemyFactory.js';
+import { isIceAt, type MazeVariant } from '../maze/maze.js';
+import type { IceTile, Player } from '../core/types.js';
 
 // Abstract Factory products. Each theme family supplies all three products.
 export interface EnemyAppearance { readonly color: string; }

@@ -1,4 +1,4 @@
-import type { ClientMessage, ServerMessage } from '../shared/messages.js';
+import type { ClientMessage, ServerMessage } from '../../shared/core/messages.js';
 
 /** Facade subsystem: the WebSocket to the server. */
 export class ServerConnection {

@@ -1,4 +1,4 @@
-import type { ArrowState } from './arrow.js';
+import type { ArrowState } from '../weapons/arrow.js';
 
 export interface Player {
   id: number; // 0 or 1

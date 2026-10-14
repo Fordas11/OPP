@@ -12,18 +12,18 @@ Serveriui reikia vienos bendros vietos, kur saugomi visi kambariai. Anksčiau ta
 
 ## 2. Factory — priešų kūrimas
 
-- Failas: `src/shared/enemyFactory.ts`
+- Failas: `src/shared/enemies/enemyFactory.ts`
 - Factory: `EnemyFactory`
 - Produktai: `SkeletonEnemy`, `RunnerEnemy`, `BruteEnemy`
-- Naudojama: `src/shared/level.ts`
+- Naudojama: `src/shared/game/level.ts`
 
 `level.ts` nebekuria didelio priešų objekto ranka. Jis tik paprašo `factory.create(kind, spot, level)`. Factory žino, kiek gyvybių, greičio ir dydžio turi kiekvienas konkretus priešas. Taip pridėti ketvirtą tipą reikštų pakeisti Factory, o ne visą žaidimo kodą.
 
-Kiekvienas produktas turi ir atskirą išvaizdą `src/client/sprites.ts`: mažas žalsvas `Runner`, didelis tamsus `Brute` su raudonomis akimis ir paprastas `Skeleton`.
+Kiekvienas produktas turi ir atskirą išvaizdą `src/client/render/sprites.ts`: mažas žalsvas `Runner`, didelis tamsus `Brute` su raudonomis akimis ir paprastas `Skeleton`.
 
 ## 3. Abstract Factory — keturios temų šeimos
 
-- Failas: `src/shared/themeFactory.ts`
+- Failas: `src/shared/themes/themeFactory.ts`
 - Abstract Factory sąsaja: `ThemeFactory`
 - Real factories: `CryptThemeFactory`, `FrostThemeFactory`, `FireThemeFactory`, `GardenThemeFactory`
 - Kiekvienoje šeimoje yra trys produktai: `EnemyAppearance`, `MazeAppearance`, `EffectAppearance`.
@@ -32,16 +32,16 @@ Tema yra pilnas suderintų dalykų rinkinys. Kampanijoje yra tik penki lygiai: p
 
 ## 4. Strategy — priešo judėjimas
 
-- Failas: `src/shared/enemyStrategies.ts`
+- Failas: `src/shared/enemies/enemyStrategies.ts`
 - Strategijų sąsaja: `EnemyStrategy`
 - Strategijos: `ChaseStrategy`, `RetreatStrategy`, `CircleStrategy`, `WanderStrategy`
-- Naudojama: `Game.updateEnemy()` faile `src/shared/game.ts`
+- Naudojama: `Game.updateEnemy()` faile `src/shared/game/game.ts`
 
 Kiekviena strategija yra atskiras būdas pasirinkti, kaip priešas juda. `Game` nebesaugo ilgo `if/else` su visų tipų elgsena: jis paklausia `strategyFor(enemy, target)`, gauna tinkamą strategiją ir iškviečia `move()`. Skeleton seka, runner laikosi atstumo, brute juda ratu, o nematantis žaidėjo priešas klaidžioja.
 
 ## 5. Observer — žaidimo įvykiai ir efektai
 
-- Failas: `src/shared/gameEvents.ts`
+- Failas: `src/shared/events/gameEvents.ts`
 - Subject: `GameEventPublisher`
 - Observer sąsaja: `GameEventObserver`
 - Concrete Observer: `EffectObserver`
@@ -51,7 +51,7 @@ Kai priešas gauna smūgį, `Game` nebekuria dalelių tiesiogiai. Jis paskelbia 
 
 ## 6. Builder — labirinto statymas etapais
 
-- Failas: `src/shared/maze.ts`
+- Failas: `src/shared/maze/maze.ts`
 - Director: `MazeDirector`
 - Builder sąsaja: `MazeBuilder`
 - Concrete builders: `ClassicMazeBuilder`, `OpenMazeBuilder`

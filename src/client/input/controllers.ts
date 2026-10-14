@@ -1,6 +1,6 @@
-import type { GameSession } from './session.js';
-import { settings } from './settings.js';
-import { closeSettings, handleBindingKey, handleBindingMouse, isSettingsOpen, openSettings } from './settingsPanel.js';
+import type { GameSession } from '../session/session.js';
+import { settings } from '../settings/settings.js';
+import { closeSettings, handleBindingKey, handleBindingMouse, isSettingsOpen, openSettings } from '../settings/settingsPanel.js';
 
 /** Facade client 1: the menu buttons. It never touches the WebSocket or the overlays itself. */
 export class MenuController {

@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { Difficulty } from '../shared/constants.js';
+import type { Difficulty } from '../shared/core/constants.js';
 import { Room, send } from './room.js';
 
 const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O, they look like 1 and 0

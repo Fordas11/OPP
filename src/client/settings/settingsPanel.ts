@@ -1,4 +1,4 @@
-import { isDifficulty } from '../shared/constants.js';
+import { isDifficulty } from '../../shared/core/constants.js';
 import { BarStyleCommand, CommandHistory, DifficultyCommand, RebindCommand, ResetBindingsCommand, SettingsReceiver, type Command } from './commands.js';
 import { displayBinding, isBarStyle, settings, type Action } from './settings.js';
 

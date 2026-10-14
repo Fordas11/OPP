@@ -1,7 +1,7 @@
-import type { Point } from './math.js';
-import { EnemyFactory, type EnemyKind } from './enemyFactory.js';
-import { cellCenters, startPoint, tileCenter } from './maze.js';
-import type { Enemy, HeartPickup, IceTile } from './types.js';
+import type { Point } from '../core/math.js';
+import { EnemyFactory, type EnemyKind } from '../enemies/enemyFactory.js';
+import { cellCenters, startPoint, tileCenter } from '../maze/maze.js';
+import type { Enemy, HeartPickup, IceTile } from '../core/types.js';
 
 const MIN_DISTANCE_FROM_START = 190;
 

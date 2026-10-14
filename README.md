@@ -47,10 +47,22 @@ Jei neprisijungia: leisk Node.js per Windows ugniasienę, o viešuose Wi-Fi tink
 Žaidimo logiką vykdo serveris. Naršyklė 30 kartų per sekundę siunčia klavišus ir pelės kryptį, serveris atnaujina žaidimą ir grąžina visą būseną, o naršyklė ją tik nupiešia.
 
 ```
-public/        index.html, styles.css
-src/shared/    žaidimo taisyklės (serveris)
-src/server/    HTTP + WebSocket serveris, kambariai
-src/client/    naršyklės kodas: įvestis, piešimas, meniu
+public/                 index.html, styles.css
+src/
+  shared/               žaidimo taisyklės (serveris)
+    core/               konstantos, tipai, žinutės, matematika
+    game/               Game, lygiai, judėjimas
+    maze/               labirintas (Builder)
+    enemies/            priešai (Factory, Strategy)
+    weapons/            kardas ir strėlės (Decorator, Prototype)
+    themes/             aukštų temos (Abstract Factory)
+    events/             žaidimo įvykiai (Observer)
+  server/               HTTP + WebSocket serveris, kambariai
+  client/               naršyklės kodas
+    session/            ryšys, ekranai, GameSession (Facade)
+    input/              klaviatūra ir pelė
+    render/             piešimas, sprite'ai, efektai, juostos (Bridge)
+    settings/           nustatymai ir komandos (Command)
 ```
 
 ## Projektavimo šablonai
@@ -60,17 +72,17 @@ Panaudota 12 šablonų.
 | # | Šablonas | Kur | Kam |
 | --- | --- | --- | --- |
 | 1 | Singleton | `server/rooms.ts` | vienas kambarių registras |
-| 2 | Factory | `shared/enemyFactory.ts` | priešų kūrimas |
-| 3 | Abstract Factory | `shared/themeFactory.ts` | aukštų temos |
-| 4 | Strategy | `shared/enemyStrategies.ts` | priešų judėjimas |
-| 5 | Observer | `shared/gameEvents.ts` | žaidimo įvykiai ir efektai |
-| 6 | Builder | `shared/maze.ts` | labirinto statymas |
+| 2 | Factory | `shared/enemies/enemyFactory.ts` | priešų kūrimas |
+| 3 | Abstract Factory | `shared/themes/themeFactory.ts` | aukštų temos |
+| 4 | Strategy | `shared/enemies/enemyStrategies.ts` | priešų judėjimas |
+| 5 | Observer | `shared/events/gameEvents.ts` | žaidimo įvykiai ir efektai |
+| 6 | Builder | `shared/maze/maze.ts` | labirinto statymas |
 | 7 | Adapter | `server/connection.ts` | WebSocket siuntimas |
-| 8 | Prototype | `shared/arrow.ts` | strėlių kopijavimas |
-| 9 | Decorator | `shared/weapon.ts` | kardo patobulinimai |
-| 10 | Facade | `client/session.ts` | vienas įėjimas į kliento posistemius |
-| 11 | Bridge | `client/healthBars.ts` | gyvybių juostos ir jų stiliai |
-| 12 | Command | `client/commands.ts` | nustatymų keitimas su atšaukimu |
+| 8 | Prototype | `shared/weapons/arrow.ts` | strėlių kopijavimas |
+| 9 | Decorator | `shared/weapons/weapon.ts` | kardo patobulinimai |
+| 10 | Facade | `client/session/session.ts` | vienas įėjimas į kliento posistemius |
+| 11 | Bridge | `client/render/healthBars.ts` | gyvybių juostos ir jų stiliai |
+| 12 | Command | `client/settings/commands.ts` | nustatymų keitimas su atšaukimu |
 
 **1. Singleton.** `RoomRegistry` turi privatų konstruktorių, o vienintelis objektas gaunamas per `getInstance()`. Taip serveris turi vieną kambarių sąrašą. Node.js vykdo kodą vienoje gijoje, todėl `create`, `join` ir `leave` negali persidengti.
 

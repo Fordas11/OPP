@@ -1,6 +1,6 @@
-import { distance, randomBetween } from './math.js';
-import { moveBody } from './movement.js';
-import type { Enemy, Player } from './types.js';
+import { distance, randomBetween } from '../core/math.js';
+import { moveBody } from '../game/movement.js';
+import type { Enemy, Player } from '../core/types.js';
 
 export interface EnemyStrategyContext { readonly maze: string[]; readonly target?: Player; readonly dt: number; }
 export interface EnemyStrategy { move(enemy: Enemy, context: EnemyStrategyContext): void; }

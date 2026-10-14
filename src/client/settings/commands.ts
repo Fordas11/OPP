@@ -1,4 +1,4 @@
-import type { Difficulty } from '../shared/constants.js';
+import type { Difficulty } from '../../shared/core/constants.js';
 import { DEFAULT_BINDINGS, displayBinding, saveSettings, settings, type Action, type BarStyleName } from './settings.js';
 
 /** Command pattern (ICommand): every settings change is an object that can do itself and take itself back. */

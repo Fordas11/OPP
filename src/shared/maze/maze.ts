@@ -1,5 +1,5 @@
-import { clamp, type Point } from './math.js';
-import type { IceTile } from './types.js';
+import { clamp, type Point } from '../core/math.js';
+import type { IceTile } from '../core/types.js';
 
 // The dungeon is a grid of square tiles. Each row of the maze is a string:
 // '#' is a wall tile and '.' is a floor tile.

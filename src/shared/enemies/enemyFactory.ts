@@ -1,5 +1,5 @@
-import { randomBetween, type Point } from './math.js';
-import type { Enemy } from './types.js';
+import { randomBetween, type Point } from '../core/math.js';
+import type { Enemy } from '../core/types.js';
 
 /** Factory pattern: one place creates all three concrete enemy products. */
 export type EnemyKind = Enemy['kind'];

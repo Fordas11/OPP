@@ -1,14 +1,14 @@
-import { DIFFICULTIES, SWING_TIME, type Difficulty } from './constants.js';
+import { DIFFICULTIES, SWING_TIME, type Difficulty } from '../core/constants.js';
 import { createEnemies, createHearts, playerSpawn } from './level.js';
-import { createMazeLayout, isWallAt } from './maze.js';
-import { distance } from './math.js';
-import { ARROW_PROTOTYPE, SPLIT_ANGLE, SPLIT_FROM_LEVEL, type Arrow } from './arrow.js';
+import { createMazeLayout, isWallAt } from '../maze/maze.js';
+import { distance } from '../core/math.js';
+import { ARROW_PROTOTYPE, SPLIT_ANGLE, SPLIT_FROM_LEVEL, type Arrow } from '../weapons/arrow.js';
 import { canSee, hasClearLine, moveBody } from './movement.js';
-import type { Enemy, GameState, Player, PlayerInput } from './types.js';
-import { strategyFor } from './enemyStrategies.js';
-import { EffectObserver, GameEventPublisher } from './gameEvents.js';
-import { themeForLevel, visualsFrom, type ThemeFactory } from './themeFactory.js';
-import { Sword, UPGRADES, type Weapon } from './weapon.js';
+import type { Enemy, GameState, Player, PlayerInput } from '../core/types.js';
+import { strategyFor } from '../enemies/enemyStrategies.js';
+import { EffectObserver, GameEventPublisher } from '../events/gameEvents.js';
+import { themeForLevel, visualsFrom, type ThemeFactory } from '../themes/themeFactory.js';
+import { Sword, UPGRADES, type Weapon } from '../weapons/weapon.js';
 
 const NO_INPUT: PlayerInput = { up: false, down: false, left: false, right: false, aim: 0, attack: false, shoot: false };
 const LAST_LEVEL = 5;

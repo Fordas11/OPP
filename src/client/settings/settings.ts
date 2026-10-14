@@ -1,4 +1,4 @@
-import { isDifficulty, type Difficulty } from '../shared/constants.js';
+import { isDifficulty, type Difficulty } from '../../shared/core/constants.js';
 
 export type Action = 'up' | 'down' | 'left' | 'right' | 'attack' | 'shoot';
 export type BarStyleName = 'solid' | 'segmented';

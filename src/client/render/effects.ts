@@ -1,4 +1,4 @@
-import { randomBetween } from '../shared/math.js';
+import { randomBetween } from '../../shared/core/math.js';
 
 interface Particle {
   x: number;

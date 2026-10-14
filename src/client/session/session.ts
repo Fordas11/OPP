@@ -1,11 +1,11 @@
-import { MAX_PLAYERS } from '../shared/constants.js';
-import type { ServerMessage } from '../shared/messages.js';
-import type { GameState } from '../shared/types.js';
-import { addBurst, addFlash, clearEffects } from './effects.js';
-import { InputState } from './input.js';
+import { MAX_PLAYERS } from '../../shared/core/constants.js';
+import type { ServerMessage } from '../../shared/core/messages.js';
+import type { GameState } from '../../shared/core/types.js';
+import { addBurst, addFlash, clearEffects } from '../render/effects.js';
+import { InputState } from '../input/input.js';
 import { ServerConnection } from './network.js';
 import { ScreenManager } from './screens.js';
-import { settings } from './settings.js';
+import { settings } from '../settings/settings.js';
 
 /**
  * Facade pattern. The menu and the keyboard controllers only talk to this class.

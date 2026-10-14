@@ -1,10 +1,10 @@
-import { ARENA_HEIGHT as H, ARENA_WIDTH as W } from '../shared/constants.js';
-import { MAX_BOUNCES, type ArrowState } from '../shared/arrow.js';
-import type { GameState } from '../shared/types.js';
+import { ARENA_HEIGHT as H, ARENA_WIDTH as W } from '../../shared/core/constants.js';
+import { MAX_BOUNCES, type ArrowState } from '../../shared/weapons/arrow.js';
+import type { GameState } from '../../shared/core/types.js';
 import { drawEffects } from './effects.js';
-import { isWall, MAZE_COLS, MAZE_LEFT, MAZE_ROWS, MAZE_TOP, TILE } from '../shared/maze.js';
+import { isWall, MAZE_COLS, MAZE_LEFT, MAZE_ROWS, MAZE_TOP, TILE } from '../../shared/maze/maze.js';
 import { BAR_STYLES, EnemyHealthBar, PlayerHealthBar } from './healthBars.js';
-import { settings } from './settings.js';
+import { settings } from '../settings/settings.js';
 import { CAPE_COLORS, drawKnight, drawSkeleton } from './sprites.js';
 
 /** Draws one frame of the game. `myId` is the player controlled in this browser. */

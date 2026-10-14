@@ -1,8 +1,8 @@
 import type { WebSocket } from 'ws';
-import { MAX_PLAYERS, TICK_RATE, type Difficulty } from '../shared/constants.js';
-import { Game } from '../shared/game.js';
-import type { ServerMessage } from '../shared/messages.js';
-import type { PlayerInput } from '../shared/types.js';
+import { MAX_PLAYERS, TICK_RATE, type Difficulty } from '../shared/core/constants.js';
+import { Game } from '../shared/game/game.js';
+import type { ServerMessage } from '../shared/core/messages.js';
+import type { PlayerInput } from '../shared/core/types.js';
 import { WebSocketAdapter, type Connection } from './connection.js';
 
 interface Member {

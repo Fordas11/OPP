@@ -1,7 +1,7 @@
-import { ARENA_HEIGHT, ARENA_WIDTH } from '../shared/constants.js';
-import type { Point } from '../shared/math.js';
-import type { PlayerInput } from '../shared/types.js';
-import { settings } from './settings.js';
+import { ARENA_HEIGHT, ARENA_WIDTH } from '../../shared/core/constants.js';
+import type { Point } from '../../shared/core/math.js';
+import type { PlayerInput } from '../../shared/core/types.js';
+import { settings } from '../settings/settings.js';
 
 /** Facade subsystem: the keys held down and where the mouse is. */
 export class InputState {

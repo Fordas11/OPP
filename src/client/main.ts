@@ -1,9 +1,9 @@
-import { TICK_RATE } from '../shared/constants.js';
-import { KeyboardController, MenuController } from './controllers.js';
-import { updateEffects } from './effects.js';
-import { drawGame } from './render.js';
-import { GameSession } from './session.js';
-import { loadSettings } from './settings.js';
+import { TICK_RATE } from '../shared/core/constants.js';
+import { KeyboardController, MenuController } from './input/controllers.js';
+import { updateEffects } from './render/effects.js';
+import { drawGame } from './render/render.js';
+import { GameSession } from './session/session.js';
+import { loadSettings } from './settings/settings.js';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const ctx = canvas.getContext('2d')!;
