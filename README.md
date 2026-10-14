@@ -1,6 +1,6 @@
 # Dungeon Crawler
 
-Kooperatyvinis 2D žaidimas naršyklėje (iki 4 žaidėjų). Riteriai kartu eina per 5 labirinto aukštus ir naikina skeletus. Kiekvieną kartą labirintas sugeneruojamas iš naujo. Parašyta su TypeScript, Canvas 2D ir WebSocket, be žaidimų variklio.
+2D žaidimas naršyklėje. Riteriai kartu eina per labirinto aukštus ir žudo skeletus.
 
 ## Paleidimas
 
@@ -13,7 +13,7 @@ Atidaryk `http://localhost:3000`.
 
 ## Žaidimas
 
-1. Vienas žaidėjas (šeimininkas) spaudžia **Create Room** ir pasako kitiems 4 raidžių kodą.
+1. Vienas žaidėjas spaudžia **Create Room** ir pasako kitiems 4 raidžių kodą.
 2. Kiti spaudžia **Join Room** ir įveda kodą. Šeimininkas spaudžia **Start Game**.
 3. Reikia nužudyti visus aukšto skeletus, tada pereinama į kitą aukštą. Nugalėjus 5 aukštą žaidimas baigiasi.
 
