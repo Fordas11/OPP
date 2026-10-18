@@ -1,3 +1,7 @@
 node_modules/
 dist/
 .pnpm-store/
+
+# Claude Code
+.claude/
+.mcp.json
