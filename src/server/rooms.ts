@@ -2,9 +2,8 @@ import type { WebSocket } from 'ws';
 import type { Difficulty } from '../shared/core/constants.js';
 import { Room, send } from './room.js';
 
-const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O, they look like 1 and 0
-/** Singleton: one shared registry. Node's event loop runs each synchronous Map
- * operation to completion, so create/join/leave cannot interleave mid-operation. */
+const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O
+/** Singleton room registry. Node is single-threaded, so operations cannot interleave. */
 export class RoomRegistry {
   private static instance: RoomRegistry | undefined;
   private readonly rooms = new Map<string, Room>();
@@ -42,5 +41,5 @@ const registry = RoomRegistry.getInstance();
 export function createRoom(socket: WebSocket, difficulty: Difficulty): void { registry.create(socket, difficulty); }
 export function joinRoom(socket: WebSocket, code: string): void { registry.join(socket, code); }
 export function findRoom(socket: WebSocket): Room | undefined { return registry.find(socket); }
-/** Takes the player out of their room. An empty room is deleted. */
+/** Empty rooms are deleted. */
 export function leaveRoom(socket: WebSocket): void { registry.leave(socket); }

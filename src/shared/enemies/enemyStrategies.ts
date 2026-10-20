@@ -5,7 +5,7 @@ import type { Enemy, Player } from '../core/types.js';
 export interface EnemyStrategyContext { readonly maze: string[]; readonly target?: Player; readonly dt: number; }
 export interface EnemyStrategy { move(enemy: Enemy, context: EnemyStrategyContext): void; }
 
-/** Four interchangeable movement algorithms used by Game.updateEnemy(). */
+/** Strategy: enemy movement. */
 export class ChaseStrategy implements EnemyStrategy {
   public move(enemy: Enemy, { target, maze, dt }: EnemyStrategyContext): void {
     if (!target) return;
@@ -17,7 +17,7 @@ export class RetreatStrategy implements EnemyStrategy {
   public move(enemy: Enemy, { target, maze, dt }: EnemyStrategyContext): void {
     if (!target) return;
     const angle = Math.atan2(enemy.y - target.y, enemy.x - target.x);
-    // Runner keeps distance, but starts advancing if it is already far away.
+    // Keep distance; come closer when far away.
     const direction = distance(target, enemy) < 105 ? 1 : -0.55;
     moveBody(enemy, Math.cos(angle) * enemy.speed * direction * dt, Math.sin(angle) * enemy.speed * direction * dt, maze);
   }

@@ -1,6 +1,6 @@
 import type { ClientMessage, ServerMessage } from '../../shared/core/messages.js';
 
-/** Facade subsystem: the WebSocket to the server. */
+/** Facade subsystem: WebSocket. */
 export class ServerConnection {
   private socket: WebSocket | null = null;
 
@@ -8,17 +8,16 @@ export class ServerConnection {
     return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
   }
 
-  /** Opens a WebSocket to the server that served this page. */
   public connect(onMessage: (message: ServerMessage) => void, onLost: () => void): Promise<void> {
     return new Promise((resolve, reject) => {
-      const protocol = location.protocol === 'https:' ? 'wss' : 'ws'; // hosting sites serve the page over https
+      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
       const ws = new WebSocket(`${protocol}://${location.host}`);
       this.socket = ws;
       ws.onopen = () => resolve();
       ws.onerror = () => reject(new Error('Cannot reach the server.'));
       ws.onmessage = event => onMessage(JSON.parse(event.data) as ServerMessage);
       ws.onclose = () => {
-        if (this.socket !== ws) return; // we closed it on purpose
+        if (this.socket !== ws) return; // closed on purpose
         this.socket = null;
         onLost();
       };

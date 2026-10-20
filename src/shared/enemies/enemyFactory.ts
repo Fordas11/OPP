@@ -1,8 +1,10 @@
 import { randomBetween, type Point } from '../core/math.js';
 import type { Enemy } from '../core/types.js';
 
-/** Factory pattern: one place creates all three concrete enemy products. */
+/** Factory: creates the three enemy kinds. */
 export type EnemyKind = Enemy['kind'];
+
+let nextId = 1;
 
 abstract class EnemyProduct {
   public abstract readonly kind: EnemyKind;
@@ -13,7 +15,7 @@ abstract class EnemyProduct {
   public create(position: Point, level: number): Enemy {
     const hp = this.baseHp + Math.floor(level / 4);
     return {
-      kind: this.kind, x: position.x + randomBetween(-6, 6), y: position.y + randomBetween(-6, 6),
+      id: nextId++, kind: this.kind, x: position.x + randomBetween(-6, 6), y: position.y + randomBetween(-6, 6),
       r: this.radius, hp, maxHp: hp, speed: this.baseSpeed + level * 4,
       hit: 0, attackTimer: randomBetween(0.2, 0.9), wobble: Math.random() * 6,
       wanderAngle: Math.random() * Math.PI * 2, wanderTime: randomBetween(0.4, 1.7),

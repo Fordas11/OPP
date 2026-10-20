@@ -1,20 +1,20 @@
 export const BASE_REACH = 83;
 
-/** What the game needs from a weapon. Both the base sword and every upgrade look like this. */
+/** Base sword and upgrades share this. */
 export interface Weapon {
   name(): string;
   damage(): number;
   reach(): number;
 }
 
-/** The plain sword every knight starts with. Upgrades wrap it (see the decorators below). */
+/** Starting sword. */
 export class Sword implements Weapon {
   public name(): string { return 'Sword'; }
   public damage(): number { return 1; }
   public reach(): number { return BASE_REACH; }
 }
 
-/** Decorator pattern: wraps a weapon and changes one number, without touching the weapon inside. */
+/** Decorator: wraps a weapon and changes one stat. */
 abstract class WeaponDecorator implements Weapon {
   public constructor(protected readonly inner: Weapon) {}
   public name(): string { return this.inner.name(); }
@@ -37,5 +37,5 @@ export class BlessedBlade extends WeaponDecorator {
   public override reach(): number { return this.inner.reach() + 10; }
 }
 
-/** Upgrades in the order a knight earns them (see KILLS_PER_UPGRADE in game.ts). */
+/** In the order they are earned. */
 export const UPGRADES: Array<new (inner: Weapon) => Weapon> = [LongBlade, SharpBlade, BlessedBlade];

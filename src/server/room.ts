@@ -6,12 +6,12 @@ import type { PlayerInput } from '../shared/core/types.js';
 import { WebSocketAdapter, type Connection } from './connection.js';
 
 interface Member {
-  id: number; // 0 to 3, also decides the knight's color
+  id: number; // 0-3, also the knight color
   socket: WebSocket;
-  connection: Connection; // adapter around the socket
+  connection: Connection;
 }
 
-/** A room holds up to four players. The first one is the host and starts the game. */
+/** Up to 4 players; the first one is the host. */
 export class Room {
   private readonly members: Member[] = [];
   private game: Game | null = null;
@@ -41,7 +41,7 @@ export class Room {
     this.sendLobby();
   }
 
-  /** Only the host can start, and only while the room is still waiting. */
+  /** Host only, before the game starts. */
   public start(socket: WebSocket): void {
     if (this.isStarted() || this.members[0]?.socket !== socket) return;
     this.begin();
@@ -66,7 +66,7 @@ export class Room {
     if (member) this.game?.undoCheat(member.id);
   }
 
-  /** The others keep playing. If the host leaves before the start, the next player becomes host. */
+  /** If the host leaves the lobby, the next player becomes host. */
   public remove(socket: WebSocket): void {
     const index = this.members.findIndex(member => member.socket === socket);
     if (index === -1) return;
@@ -88,7 +88,9 @@ export class Room {
   private tick(): void {
     if (!this.game) return;
     this.game.update(1 / TICK_RATE);
-    for (const member of this.members) member.connection.send({ type: 'state', state: this.game.state });
+    const message: ServerMessage = { type: 'state', state: this.game.state };
+    const json = JSON.stringify(message, roundNumber); // encode once for all
+    for (const member of this.members) member.connection.sendJson(json);
   }
 
   private sendLobby(): void {
@@ -108,7 +110,12 @@ export class Room {
   }
 }
 
-/** For sockets that are not in a room yet (for example "Room not found"). */
+/** Rounds to 2 decimals for smaller messages. */
+function roundNumber(_key: string, value: unknown): unknown {
+  return typeof value === 'number' && !Number.isInteger(value) ? Math.round(value * 100) / 100 : value;
+}
+
+/** For sockets not in a room yet. */
 export function send(socket: WebSocket, message: ServerMessage): void {
   new WebSocketAdapter(socket).send(message);
 }

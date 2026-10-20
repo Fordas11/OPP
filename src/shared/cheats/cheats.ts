@@ -2,14 +2,14 @@ import type { GameState, Player } from '../core/types.js';
 
 const FAST_SPEED = 450;
 
-/** Command pattern (ICommand): one cheat that can be turned on with execute() and taken back with undo(). */
+/** Command: a cheat that can be undone. */
 export interface CheatCommand {
   execute(): void;
   undo(): void;
   describe(): string;
 }
 
-/** Receiver: knows how to really change one knight and the game. Commands only call its actions. */
+/** Receiver: changes the knight and the game. */
 export class CheatReceiver {
   public constructor(private readonly player: Player, private readonly state: GameState) {}
 
@@ -26,14 +26,13 @@ export class CheatReceiver {
   public areEnemiesFrozen(): boolean { return this.state.enemiesFrozen; }
   public setEnemiesFrozen(frozen: boolean): void { this.state.enemiesFrozen = frozen; }
 
-  /** Shows a short message above the knight. */
   public announce(text: string): void {
     this.player.cheatText = text;
     this.player.cheatTimer = 2;
   }
 }
 
-/** Concrete command 1 ("kkk"): the knight runs much faster. State: the old speed. */
+/** "kkk": super speed. */
 export class SpeedCheatCommand implements CheatCommand {
   private previous = 0;
   public constructor(private readonly receiver: CheatReceiver) {}
@@ -45,7 +44,7 @@ export class SpeedCheatCommand implements CheatCommand {
   public describe(): string { return 'super speed'; }
 }
 
-/** Concrete command 2 ("jjj"): infinite health, nothing can hurt the knight. State: god mode before. */
+/** "jjj": god mode. */
 export class GodModeCheatCommand implements CheatCommand {
   private previous = false;
   public constructor(private readonly receiver: CheatReceiver) {}
@@ -57,7 +56,7 @@ export class GodModeCheatCommand implements CheatCommand {
   public describe(): string { return 'god mode'; }
 }
 
-/** Concrete command 3 ("lll"): heals the knight to full health. State: the hp before. */
+/** "lll": full heal. */
 export class HealCheatCommand implements CheatCommand {
   private previous = 0;
   public constructor(private readonly receiver: CheatReceiver) {}
@@ -69,7 +68,7 @@ export class HealCheatCommand implements CheatCommand {
   public describe(): string { return 'full heal'; }
 }
 
-/** Concrete command 4 ("mmm"): every enemy stands still. State: whether they were frozen before. */
+/** "mmm": freeze enemies. */
 export class FreezeEnemiesCheatCommand implements CheatCommand {
   private previous = false;
   public constructor(private readonly receiver: CheatReceiver) {}
@@ -81,7 +80,6 @@ export class FreezeEnemiesCheatCommand implements CheatCommand {
   public describe(): string { return 'freeze enemies'; }
 }
 
-/** Which typed code creates which command. */
 export const CHEAT_CODES: Record<string, (receiver: CheatReceiver) => CheatCommand> = {
   kkk: receiver => new SpeedCheatCommand(receiver),
   jjj: receiver => new GodModeCheatCommand(receiver),
@@ -89,7 +87,7 @@ export const CHEAT_CODES: Record<string, (receiver: CheatReceiver) => CheatComma
   mmm: receiver => new FreezeEnemiesCheatCommand(receiver),
 };
 
-/** Invoker: runs cheats and keeps a stack of them, so Ctrl+Z can undo them one by one, newest first. */
+/** Invoker: runs cheats and keeps an undo stack. */
 export class CheatInvoker {
   private readonly done: CheatCommand[] = [];
 
@@ -98,7 +96,7 @@ export class CheatInvoker {
     this.done.push(command);
   }
 
-  /** Returns the command that was undone, or undefined when there is nothing to undo. */
+  /** Returns the undone command, if any. */
   public undo(): CheatCommand | undefined {
     const command = this.done.pop();
     command?.undo();

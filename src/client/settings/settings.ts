@@ -31,7 +31,7 @@ export function loadSettings(): void {
     if (isDifficulty(saved.difficulty)) settings.difficulty = saved.difficulty;
     if (isBarStyle(saved.barStyle)) settings.barStyle = saved.barStyle;
   } catch {
-    // no saved settings, the defaults are used
+    // use defaults
   }
 }
 
@@ -39,7 +39,7 @@ export function saveSettings(): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
-    // settings still work for this session
+    // storage unavailable
   }
 }
 

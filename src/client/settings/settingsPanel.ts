@@ -26,7 +26,7 @@ export function closeSettings(): void {
   panel.classList.add('hidden');
 }
 
-/** Called for every key press. Returns true when the key was used to set a binding. */
+/** True if the key was used for a binding. */
 export function handleBindingKey(event: KeyboardEvent): boolean {
   if (!waitingFor) return false;
   event.preventDefault();
@@ -40,7 +40,7 @@ export function handleBindingKey(event: KeyboardEvent): boolean {
   return true;
 }
 
-/** Called for every mouse press. Returns true when the button was used to set the attack or bow binding. */
+/** True if the click was used for a binding. */
 export function handleBindingMouse(event: MouseEvent): boolean {
   if (!waitingFor) return false;
   event.preventDefault();

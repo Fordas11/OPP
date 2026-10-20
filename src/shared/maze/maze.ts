@@ -6,12 +6,12 @@ import type { IceTile } from '../core/types.js';
 export const TILE = 48;
 export const MAZE_COLS = 19;
 export const MAZE_ROWS = 11;
-export const MAZE_LEFT = 24; // where the maze starts on the canvas
+export const MAZE_LEFT = 24;
 export const MAZE_TOP = 60;
 
 const CENTER_COL = (MAZE_COLS - 1) / 2;
 const CENTER_ROW = (MAZE_ROWS - 1) / 2;
-const EXTRA_OPENINGS = 0.3; // chance to knock out a wall, so the maze has loops
+const EXTRA_OPENINGS = 0.3; // chance per wall, makes loops
 
 export function tileCenter(col: number, row: number): Point {
   return { x: MAZE_LEFT + col * TILE + TILE / 2, y: MAZE_TOP + row * TILE + TILE / 2 };
@@ -26,7 +26,7 @@ export function isWallAt(maze: string[], x: number, y: number): boolean {
   return isWall(maze, Math.floor((x - MAZE_LEFT) / TILE), Math.floor((y - MAZE_TOP) / TILE));
 }
 
-/** True when a circle at (x, y) with radius r overlaps a wall tile. */
+/** Circle overlaps a wall tile. */
 export function hitsWall(maze: string[], x: number, y: number, r: number): boolean {
   const firstCol = Math.floor((x - r - MAZE_LEFT) / TILE);
   const lastCol = Math.floor((x + r - MAZE_LEFT) / TILE);
@@ -46,12 +46,12 @@ export function hitsWall(maze: string[], x: number, y: number, r: number): boole
   return false;
 }
 
-/** The middle of the maze, where the players start each floor. */
+/** Maze center, where players start. */
 export function startPoint(): Point {
   return tileCenter(CENTER_COL, CENTER_ROW);
 }
 
-/** Centers of the maze cells (not the wall gaps between them). */
+/** Cell centers (odd rows and columns). */
 export function cellCenters(maze: string[]): Point[] {
   const cells: Point[] = [];
   for (let row = 1; row < MAZE_ROWS; row += 2) {
@@ -62,7 +62,7 @@ export function cellCenters(maze: string[]): Point[] {
   return cells;
 }
 
-/** Product assembled step by step by a builder. */
+/** Builder steps. */
 export interface MazeBuilder {
   createEmptyGrid(): void;
   carvePaths(): void;
@@ -83,19 +83,18 @@ abstract class BaseMazeBuilder implements MazeBuilder {
   public carvePaths(): void { carveCorridors(this.wall); }
   public abstract addExtraOpenings(): void;
   public addStartRoom(): void { openStartRoom(this.wall); }
-  public addSpecialTiles(): void { /* Default floor has no hazards. */ }
+  public addSpecialTiles(): void { /* no hazards */ }
   public getResult(): MazeLayout { return { tiles: this.wall.map(row => row.map(isSolid => (isSolid ? '#' : '.')).join('')), iceTiles: this.iceTiles, fireTiles: this.fireTiles, healingTiles: this.healingTiles }; }
 }
 
-/** Concrete Builder 1: the original dungeon with a moderate number of loops. */
+/** Classic maze. */
 export class ClassicMazeBuilder extends BaseMazeBuilder {
   public addExtraOpenings(): void { openExtraWalls(this.wall, EXTRA_OPENINGS); }
 }
 
-/** Concrete Builder 2: a more open maze, used for frost floors. */
+/** Open maze with ice. */
 export class OpenMazeBuilder extends BaseMazeBuilder {
   public addExtraOpenings(): void { openExtraWalls(this.wall, 0.58); }
-  /** Builder-only job: decide which floor cells become ice. */
   public override addSpecialTiles(): void {
     for (let row = 1; row < MAZE_ROWS - 1; row += 2) for (let col = 1; col < MAZE_COLS - 1; col += 2) {
       const outsideStart = Math.abs(col - CENTER_COL) > 1 || Math.abs(row - CENTER_ROW) > 1;
@@ -108,7 +107,7 @@ export class IceHealingMazeBuilder extends OpenMazeBuilder {
   public override addSpecialTiles(): void { super.addSpecialTiles(); this.healingTiles = chooseSpecialTiles(this.wall, 0.18); }
 }
 
-/** Concrete Builder 3: lava floor; stepping on a flame is immediately fatal. */
+/** Maze with deadly fire tiles. */
 export class FireMazeBuilder extends BaseMazeBuilder {
   public addExtraOpenings(): void { openExtraWalls(this.wall, 0.18); }
   public override addSpecialTiles(): void { this.fireTiles = chooseFireTiles(this.wall, 0.22); }
@@ -121,13 +120,13 @@ export class FireIceHealingMazeBuilder extends FireIceMazeBuilder {
   public override addSpecialTiles(): void { super.addSpecialTiles(); this.healingTiles = chooseSpecialTiles(this.wall, 0.14); }
 }
 
-/** Concrete Builder 4: a calmer garden with healing grass patches. */
+/** Garden with healing tiles. */
 export class GardenMazeBuilder extends BaseMazeBuilder {
   public addExtraOpenings(): void { openExtraWalls(this.wall, 0.45); }
   public override addSpecialTiles(): void { this.healingTiles = chooseSpecialTiles(this.wall, 0.25); }
 }
 
-/** Director knows the construction order; it does not know a builder's implementation. */
+/** Builder director: fixed build order. */
 export class MazeDirector {
   public construct(builder: MazeBuilder): MazeLayout {
     builder.createEmptyGrid();
@@ -152,7 +151,7 @@ export function isIceAt(iceTiles: IceTile[], x: number, y: number): boolean {
   return iceTiles.some(tile => tile.col === col && tile.row === row);
 }
 
-/** Like chooseSpecialTiles, but a flame is skipped when it would cut off part of the maze, so every skeleton can be reached. */
+/** Skips flames that would cut off part of the maze. */
 function chooseFireTiles(wall: boolean[][], chance: number): IceTile[] {
   const fire: IceTile[] = [];
   for (const tile of chooseSpecialTiles(wall, chance)) {
@@ -162,7 +161,7 @@ function chooseFireTiles(wall: boolean[][], chance: number): IceTile[] {
   return fire;
 }
 
-/** True when every floor tile can be reached from the start room without stepping on a flame. */
+/** Every floor tile reachable without fire. */
 function isMazeConnected(wall: boolean[][], fire: IceTile[]): boolean {
   const blocked = (col: number, row: number) => wall[row][col] || fire.some(tile => tile.col === col && tile.row === row);
   const seen = new Set<number>();
@@ -191,7 +190,7 @@ function chooseSpecialTiles(wall: boolean[][], chance: number): IceTile[] {
   return tiles;
 }
 
-/** Random walk that visits every cell once. Cells sit on odd rows and columns. */
+/** Random-walk maze over odd cells. */
 function carveCorridors(wall: boolean[][]): void {
   const steps = [[2, 0], [-2, 0], [0, 2], [0, -2]];
   const path = [{ col: 1, row: 1 }];
@@ -206,17 +205,17 @@ function carveCorridors(wall: boolean[][]): void {
     });
 
     if (options.length === 0) {
-      path.pop(); // dead end, step back
+      path.pop(); // dead end
       continue;
     }
     const [dc, dr] = options[Math.floor(Math.random() * options.length)];
-    wall[here.row + dr / 2][here.col + dc / 2] = false; // the gap between two cells
+    wall[here.row + dr / 2][here.col + dc / 2] = false; // gap between cells
     wall[here.row + dr][here.col + dc] = false;
     path.push({ col: here.col + dc, row: here.row + dr });
   }
 }
 
-/** Knocks out some inner walls between two cells, so there is more than one route. */
+/** Removes some walls to make loops. */
 function openExtraWalls(wall: boolean[][], chance: number): void {
   for (let row = 1; row < MAZE_ROWS - 1; row++) {
     for (let col = 1; col < MAZE_COLS - 1; col++) {

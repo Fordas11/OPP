@@ -3,14 +3,14 @@ import type { Effect, GameState } from '../core/types.js';
 export type GameEvent = { type: 'enemy-hit'; x: number; y: number } | { type: 'enemy-defeated'; x: number; y: number } | { type: 'player-hit' | 'ice-damage' | 'fire-damage'; x: number; y: number } | { type: 'heart-collected' | 'healed' | 'arrow-bounce'; x: number; y: number };
 export interface GameEventObserver { update(event: GameEvent): void; }
 
-/** Subject in Observer: Game publishes events without knowing its observers. */
+/** Observer subject. */
 export class GameEventPublisher {
   private readonly observers = new Set<GameEventObserver>();
   public subscribe(observer: GameEventObserver): void { this.observers.add(observer); }
   public notify(event: GameEvent): void { this.observers.forEach(observer => observer.update(event)); }
 }
 
-/** Concrete observer: converts game events to effects sent to every browser in GameState. */
+/** Turns events into particle effects. */
 export class EffectObserver implements GameEventObserver {
   public constructor(private readonly state: GameState, private readonly hitColor: () => string) {}
   public update(event: GameEvent): void {

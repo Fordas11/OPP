@@ -27,7 +27,7 @@ export function addBurst(x: number, y: number, color: string, amount: number): v
   }
 }
 
-/** A short white flash of the whole screen, used when the local player is hurt. */
+/** Screen flash when we get hurt. */
 export function addFlash(): void {
   flashTime = 0.14;
 }

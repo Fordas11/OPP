@@ -15,7 +15,7 @@ webSocketServer.on('connection', socket => {
     try {
       handleMessage(socket, JSON.parse(data.toString()) as ClientMessage);
     } catch {
-      // ignore messages that are not valid JSON
+      // ignore invalid JSON
     }
   });
   socket.on('close', () => leaveRoom(socket));

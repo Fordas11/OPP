@@ -1,4 +1,4 @@
-import { TICK_RATE } from '../shared/core/constants.js';
+import { MOVE_STEP } from '../shared/core/constants.js';
 import { KeyboardController, MenuController } from './input/controllers.js';
 import { updateEffects } from './render/effects.js';
 import { drawGame } from './render/render.js';
@@ -13,21 +13,26 @@ const session = new GameSession();
 new MenuController(session);
 new KeyboardController(session, canvas);
 
-// ---------- Main loops ----------
-
-// Send our input to the server as often as the server runs its ticks.
-setInterval(() => session.sendInput(), 1000 / TICK_RATE);
+// ---------- Main loop ----------
 
 let lastTime = performance.now();
+let stepTime = 0; // time not yet used by a movement step
+
 function frame(time: number): void {
-  const dt = Math.min(0.05, (time - lastTime) / 1000);
+  const elapsed = (time - lastTime) / 1000;
   lastTime = time;
 
-  updateEffects(dt);
-  const state = session.gameState;
-  if (state) {
-    drawGame(ctx, state, session.playerId);
+  // Fixed movement steps at the server tick rate.
+  stepTime = Math.min(stepTime + elapsed, 0.25); // no burst after a pause
+  while (stepTime >= MOVE_STEP) {
+    session.sendInput();
+    stepTime -= MOVE_STEP;
   }
+
+  const dt = Math.min(0.05, elapsed);
+  updateEffects(dt);
+  const state = session.frameState(time, stepTime / MOVE_STEP, dt);
+  if (state) drawGame(ctx, state, session.playerId);
   else ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   requestAnimationFrame(frame);

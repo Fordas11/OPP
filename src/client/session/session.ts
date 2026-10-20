@@ -5,22 +5,19 @@ import { addBurst, addFlash, clearEffects } from '../render/effects.js';
 import { InputState } from '../input/input.js';
 import { ServerConnection } from './network.js';
 import { ScreenManager } from './screens.js';
+import { Smoothing } from './smoothing.js';
 import { settings } from '../settings/settings.js';
 
-/**
- * Facade pattern. The menu and the keyboard controllers only talk to this class.
- * Behind it, three subsystems work together: ServerConnection (WebSocket),
- * ScreenManager (overlays and texts) and InputState (keys and mouse), plus the particle effects.
- */
+/** Facade: controllers only talk to this; it drives connection, screens, input and smoothing. */
 export class GameSession {
   private readonly connection = new ServerConnection();
   private readonly screens = new ScreenManager();
   private readonly input = new InputState();
+  private readonly smoothing = new Smoothing();
   private myId = 0;
   private state: GameState | null = null;
 
   public get playerId(): number { return this.myId; }
-  public get gameState(): GameState | null { return this.state; }
 
   // ---------- Used by MenuController ----------
 
@@ -39,11 +36,12 @@ export class GameSession {
   public startGame(): void { this.connection.send({ type: 'start-game' }); }
   public restart(): void { this.connection.send({ type: 'restart' }); }
 
-  /** Closes the connection, clears everything and goes back to the main menu. */
+  /** Disconnects and returns to the menu. */
   public leave(message = ''): void {
     this.connection.disconnect();
     this.state = null;
     this.input.releaseAllKeys();
+    this.smoothing.reset();
     clearEffects();
     this.screens.setText('#menuMessage', message);
     this.screens.showScreen('menu');
@@ -70,10 +68,20 @@ export class GameSession {
   public sendCheat(code: string): void { this.connection.send({ type: 'cheat', code }); }
   public undoCheat(): void { this.connection.send({ type: 'undo-cheat' }); }
 
-  /** Sends our keys and mouse to the server. Called as often as the server runs its ticks. */
+  /** One movement step: predict it locally and send it. */
   public sendInput(): void {
-    const me = this.state?.players.find(p => p.id === this.myId);
-    if (me && this.state?.phase === 'playing') this.connection.send({ type: 'input', input: this.input.readInput(me) });
+    const state = this.state;
+    const me = state?.players.find(p => p.id === this.myId);
+    if (!state || !me || state.phase !== 'playing') return;
+    const input = this.input.readInput(this.smoothing.myPosition() ?? me);
+    input.seq = this.smoothing.step(input, me, state);
+    this.connection.send({ type: 'input', input });
+  }
+
+  /** State to draw this frame. `stepProgress` is 0..1 into the current step. */
+  public frameState(now: number, stepProgress: number, dt: number): GameState | null {
+    if (!this.state) return null;
+    return this.smoothing.view(this.state, this.myId, now, stepProgress, dt, position => this.input.aimFrom(position));
   }
 
   // ---------- Messages from the server ----------
@@ -97,6 +105,7 @@ export class GameSession {
       case 'game-started':
         this.myId = message.you;
         this.state = null;
+        this.smoothing.reset();
         clearEffects();
         this.screens.showScreen('playing');
         break;
@@ -124,6 +133,7 @@ export class GameSession {
     for (const effect of next.effects) addBurst(effect.x, effect.y, effect.color, effect.amount);
 
     this.state = next;
+    this.smoothing.onState(next, this.myId, performance.now());
     if (next.phase === 'over' && this.screens.currentScreen() !== 'over') {
       this.screens.setText('#finalLevel', `You reached floor ${next.level}.`);
       this.input.releaseAllKeys();

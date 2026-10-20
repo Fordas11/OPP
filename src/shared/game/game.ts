@@ -1,39 +1,43 @@
 import { CHEAT_CODES, CheatInvoker, CheatReceiver } from '../cheats/cheats.js';
-import { DIFFICULTIES, SWING_TIME, type Difficulty } from '../core/constants.js';
+import { DIFFICULTIES, MOVE_STEP, SWING_TIME, type Difficulty } from '../core/constants.js';
 import { createEnemies, createHearts, playerSpawn } from './level.js';
 import { createMazeLayout, isWallAt } from '../maze/maze.js';
 import { distance } from '../core/math.js';
 import { ARROW_PROTOTYPE, SPLIT_ANGLE, SPLIT_FROM_LEVEL, type Arrow } from '../weapons/arrow.js';
-import { canSee, hasClearLine, moveBody } from './movement.js';
+import { canSee, hasClearLine, moveBody, movePlayer, type MoveKeys } from './movement.js';
 import type { Enemy, GameState, Player, PlayerInput } from '../core/types.js';
 import { strategyFor } from '../enemies/enemyStrategies.js';
 import { EffectObserver, GameEventPublisher } from '../events/gameEvents.js';
-import { themeForLevel, visualsFrom, type ThemeFactory } from '../themes/themeFactory.js';
+import { themeForLevel, visualsFrom, type FloorRules, type ThemeFactory } from '../themes/themeFactory.js';
 import { Sword, UPGRADES, type Weapon } from '../weapons/weapon.js';
 
-const NO_INPUT: PlayerInput = { up: false, down: false, left: false, right: false, aim: 0, attack: false, shoot: false };
+const NO_INPUT: PlayerInput = { up: false, down: false, left: false, right: false, aim: 0, attack: false, shoot: false, seq: 0 };
 const LAST_LEVEL = 5;
 const KILLS_PER_UPGRADE = 3;
 const MAX_AMMO = 20;
 const SHOOT_COOLDOWN = 0.3;
-const ARROW_STEP = 8; // arrows move in small steps so they cannot jump through a wall
+const ARROW_STEP = 8; // px; small so arrows can't skip walls
+const MAX_QUEUED_MOVES = 8;
 
-/** The whole co-op game. The server calls update() many times per second. */
+/** The co-op game; the server calls update() every tick. */
 export class Game {
   public readonly state: GameState;
   private readonly settings: { sight: number; damage: number };
   private readonly inputs = new Map<number, PlayerInput>();
+  private readonly moves = new Map<number, Array<MoveKeys & { seq: number }>>(); // queued steps per player
   private readonly events = new GameEventPublisher();
-  private readonly weapons = new Map<number, Weapon>(); // each player's current weapon (with upgrades)
-  private readonly upgradesEarned = new Map<number, number>(); // how many upgrades each weapon already has
-  private readonly cheats = new Map<number, CheatInvoker>(); // Command: each player's own cheat history
-  private readonly cheatReceivers = new Map<number, CheatReceiver>(); // Command: one receiver per player, shared by all their cheats
+  private readonly weapons = new Map<number, Weapon>();
+  private readonly upgradesEarned = new Map<number, number>();
+  private readonly cheats = new Map<number, CheatInvoker>();
+  private readonly cheatReceivers = new Map<number, CheatReceiver>();
   private arrows: Arrow[] = [];
   private theme: ThemeFactory;
+  private floorRules: FloorRules;
 
   public constructor(difficulty: Difficulty, playerIds: number[]) {
     this.settings = DIFFICULTIES[difficulty];
     this.theme = themeForLevel(1);
+    this.floorRules = this.theme.createFloorRules();
     const layout = createMazeLayout(this.theme.mazeVariant);
     this.state = {
       level: 1,
@@ -55,6 +59,7 @@ export class Game {
     this.events.subscribe(new EffectObserver(this.state, () => this.theme.createEffectAppearance().hitColor));
     for (const id of playerIds) {
       this.inputs.set(id, { ...NO_INPUT });
+      this.moves.set(id, []);
       this.weapons.set(id, new Sword());
       this.cheats.set(id, new CheatInvoker());
       this.cheatReceivers.set(id, new CheatReceiver(this.state.players.find(p => p.id === id)!, this.state));
@@ -62,10 +67,10 @@ export class Game {
     this.state.players.forEach(player => this.describeWeapon(player));
   }
 
-  /** Takes a player out of the game, for example when their browser disconnects. */
   public removePlayer(playerId: number): void {
     this.state.players = this.state.players.filter(p => p.id !== playerId);
     this.inputs.delete(playerId);
+    this.moves.delete(playerId);
     this.weapons.delete(playerId);
     this.upgradesEarned.delete(playerId);
     this.arrows = this.arrows.filter(arrow => arrow.ownerId !== playerId);
@@ -73,7 +78,7 @@ export class Game {
     this.cheatReceivers.delete(playerId);
   }
 
-  /** Command pattern client: turns a typed code into a command with the player's receiver and gives it to the invoker. */
+  /** Command client. */
   public cheat(playerId: number, code: string): void {
     const receiver = this.cheatReceivers.get(playerId);
     const createCommand = CHEAT_CODES[code];
@@ -83,7 +88,7 @@ export class Game {
     receiver.announce(`CHEAT: ${command.describe()}`);
   }
 
-  /** Ctrl+Z: undoes this player's newest cheat. Pressing it again undoes the one before. */
+  /** Undoes the player's last cheat. */
   public undoCheat(playerId: number): void {
     const receiver = this.cheatReceivers.get(playerId);
     if (!receiver || this.state.phase !== 'playing') return;
@@ -91,11 +96,12 @@ export class Game {
     receiver.announce(command ? `UNDO: ${command.describe()}` : 'nothing to undo');
   }
 
-  /** Stores the newest input. A click is remembered until the next update uses it. */
+  /** Stores the input and queues it as one movement step. Clicks stay until used. */
   public setInput(playerId: number, input: PlayerInput): void {
     const old = this.inputs.get(playerId);
-    if (!old) return;
-    this.inputs.set(playerId, {
+    const moves = this.moves.get(playerId);
+    if (!old || !moves) return;
+    const next: PlayerInput = {
       up: input.up === true,
       down: input.down === true,
       left: input.left === true,
@@ -103,7 +109,11 @@ export class Game {
       aim: Number.isFinite(input.aim) ? input.aim : 0,
       attack: old.attack || input.attack === true,
       shoot: old.shoot || input.shoot === true,
-    });
+      seq: Number.isFinite(input.seq) ? input.seq : old.seq,
+    };
+    this.inputs.set(playerId, next);
+    moves.push(next);
+    if (moves.length > MAX_QUEUED_MOVES) moves.shift();
   }
 
   public update(dt: number): void {
@@ -125,11 +135,12 @@ export class Game {
     }
   }
 
-  /** New maze, new skeletons, and everyone back in the start room (so nobody ends up inside a wall). */
+  /** New maze and enemies; players back to the start room. */
   private startNextFloor(): void {
     const state = this.state;
     state.level++;
     this.theme = themeForLevel(state.level);
+    this.floorRules = this.theme.createFloorRules();
     state.theme = this.theme.id;
     state.themeVisuals = visualsFrom(this.theme);
     const layout = createMazeLayout(this.theme.mazeVariant);
@@ -139,13 +150,13 @@ export class Game {
     state.healingTiles = layout.healingTiles;
     state.hearts = createHearts(state.level, layout.tiles, [...layout.iceTiles, ...layout.fireTiles, ...layout.healingTiles]);
     state.enemies = createEnemies(state.level, state.maze, state.players.length, layout.fireTiles);
-    state.players.forEach((player, index) => Object.assign(player, playerSpawn(index), { ammo: player.maxAmmo })); // ammo comes back every floor
+    state.players.forEach((player, index) => Object.assign(player, playerSpawn(index), { ammo: player.maxAmmo }));
     this.arrows = [];
     state.arrows = [];
     state.banner = 2.2;
   }
 
-  /** Decorator: every few kills wrap the player's weapon in one more upgrade, so each knight's weapon is different. */
+  /** Decorator: wraps the weapon in an upgrade every few kills. */
   private upgradeWeapon(player: Player): void {
     const earned = Math.min(Math.floor(player.kills / KILLS_PER_UPGRADE), UPGRADES.length);
     let have = this.upgradesEarned.get(player.id) ?? 0;
@@ -157,7 +168,7 @@ export class Game {
     this.describeWeapon(player);
   }
 
-  /** Copies the weapon's numbers into the player, so the browsers can show them. */
+  /** Copies weapon stats into the player for display. */
   private describeWeapon(player: Player): void {
     const weapon = this.weapons.get(player.id)!;
     player.weapon = { name: weapon.name(), damage: weapon.damage(), reach: weapon.reach() };
@@ -165,12 +176,13 @@ export class Game {
 
   private createPlayer(id: number, index: number): Player {
     const { x, y } = playerSpawn(index);
-    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0, kills: 0, weapon: { name: '', damage: 0, reach: 0 }, ammo: MAX_AMMO, maxAmmo: MAX_AMMO, godMode: false, cheatText: '', cheatTimer: 0 };
+    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0, kills: 0, weapon: { name: '', damage: 0, reach: 0 }, ammo: MAX_AMMO, maxAmmo: MAX_AMMO, godMode: false, cheatText: '', cheatTimer: 0, inputSeq: 0 };
   }
 
   private updatePlayer(player: Player, dt: number): void {
     player.cheatTimer = Math.max(0, player.cheatTimer - dt);
-    if (player.hp <= 0) return;
+    const moves = this.moves.get(player.id)!;
+    if (player.hp <= 0) { moves.length = 0; return; }
     const input = this.inputs.get(player.id)!;
 
     player.aim = input.aim;
@@ -178,19 +190,15 @@ export class Game {
     player.cooldown = Math.max(0, player.cooldown - dt);
     player.hurt = Math.max(0, player.hurt - dt);
 
-    const dx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-    const dy = (input.down ? 1 : 0) - (input.up ? 1 : 0);
-    if (dx || dy) {
-      const length = Math.hypot(dx, dy);
-      const oldX = player.x; const oldY = player.y;
-      moveBody(player, (dx / length) * player.speed * dt, (dy / length) * player.speed * dt, this.state.maze);
-      // A player cannot walk through a skeleton: keep the previous position on collision.
-      if (this.state.enemies.some(enemy => distance(player, enemy) < player.r + enemy.r)) { player.x = oldX; player.y = oldY; }
+    for (const move of moves) {
+      movePlayer(player, move, MOVE_STEP, this.state.maze, this.state.enemies);
+      player.inputSeq = move.seq;
     }
+    moves.length = 0;
 
     const hpBefore = player.hp;
-    const floorResult = this.theme.createFloorRules().apply(player, this.state, dt);
-    if (player.godMode) player.hp = Math.max(player.hp, hpBefore); // god mode cheat: ice and fire do no damage
+    const floorResult = this.floorRules.apply(player, this.state, dt);
+    if (player.godMode) player.hp = Math.max(player.hp, hpBefore); // god mode
     if (floorResult !== 'none') this.events.notify({ type: floorResult, x: player.x, y: player.y });
     this.collectHeart(player);
 
@@ -223,7 +231,7 @@ export class Game {
     for (const enemy of state.enemies) {
       const angle = Math.atan2(enemy.y - player.y, enemy.x - player.x);
       const inReach = distance(player, enemy) < weapon.reach() && Math.cos(angle - player.aim) > -0.15;
-      if (!inReach || !hasClearLine(player, enemy, state.maze)) continue; // swords do not cut through walls
+      if (!inReach || !hasClearLine(player, enemy, state.maze)) continue;
 
       enemy.hp -= weapon.damage();
       enemy.hit = 0.16;
@@ -234,7 +242,7 @@ export class Game {
     this.creditKills(player);
   }
 
-  /** Removes skeletons that just died and gives the kills (and weapon upgrades) to the knight who caused them. */
+  /** Removes dead enemies and credits the kills. */
   private creditKills(player: Player): void {
     const state = this.state;
     const before = state.enemies.length;
@@ -247,7 +255,7 @@ export class Game {
     this.upgradeWeapon(player);
   }
 
-  /** Bow: a new arrow is a copy of the prototype arrow, so every shot starts with its own stats. */
+  /** Prototype: every arrow is a clone. */
   private shootArrow(player: Player): void {
     if (player.cooldown > 0 || player.ammo <= 0) return;
     player.ammo--;
@@ -255,7 +263,7 @@ export class Game {
 
     const startX = player.x + Math.cos(player.aim) * (player.r + 4);
     const startY = player.y + Math.sin(player.aim) * (player.r + 4);
-    const blocked = isWallAt(this.state.maze, startX, startY); // standing against a wall: shoot from the body instead
+    const blocked = isWallAt(this.state.maze, startX, startY); // against a wall: shoot from the body
     this.arrows.push(ARROW_PROTOTYPE.clone().launch(player.id, blocked ? player.x : startX, blocked ? player.y : startY, player.aim));
   }
 
@@ -265,10 +273,10 @@ export class Game {
     this.arrows = flying;
   }
 
-  /** Moves one arrow. Survivors (and bounce copies) are added to `flying`. */
+  /** Moves one arrow; survivors and copies go to `flying`. */
   private flyArrow(arrow: Arrow, dt: number, flying: Arrow[]): void {
     const { maze, enemies, players } = this.state;
-    const owner = players.find(p => p.id === arrow.ownerId)!; // arrows of a player who left are removed in removePlayer()
+    const owner = players.find(p => p.id === arrow.ownerId)!;
     const total = arrow.stats.speed * dt;
     const steps = Math.max(1, Math.ceil(total / ARROW_STEP));
     const step = total / steps;
@@ -279,17 +287,17 @@ export class Game {
       const nextY = arrow.y + Math.sin(arrow.angle) * step;
 
       if (isWallAt(maze, nextX, nextY)) {
-        if (arrow.bouncesLeft <= 0) { flying.push(...copies); return; } // used all its bounces: the arrow breaks on the wall
-        const hitSide = isWallAt(maze, nextX, arrow.y); // the wall is to the left or right
-        const hitTop = isWallAt(maze, arrow.x, nextY); // the wall is above or below
+        if (arrow.bouncesLeft <= 0) { flying.push(...copies); return; } // no bounces left
+        const hitSide = isWallAt(maze, nextX, arrow.y);
+        const hitTop = isWallAt(maze, arrow.x, nextY);
         if (hitSide && !hitTop) arrow.angle = Math.PI - arrow.angle;
         else if (hitTop && !hitSide) arrow.angle = -arrow.angle;
-        else arrow.angle += Math.PI; // corner: bounce straight back
+        else arrow.angle += Math.PI; // corner
         arrow.bouncesLeft--;
         this.events.notify({ type: 'arrow-bounce', x: arrow.x, y: arrow.y });
-        // Prototype: from floor 5 the arrow doubles on every bounce. The copy only differs in its flight angle.
+        // Prototype: from floor 5 every bounce splits the arrow.
         if (this.state.level >= SPLIT_FROM_LEVEL) copies.push(arrow.clone().turn(SPLIT_ANGLE));
-        continue; // stay at the last free spot and fly in the new direction next step
+        continue;
       }
 
       arrow.x = nextX;
@@ -301,7 +309,7 @@ export class Game {
         moveBody(target, Math.cos(arrow.angle) * 12, Math.sin(arrow.angle) * 12, maze);
         this.events.notify({ type: 'enemy-hit', x: target.x, y: target.y });
         this.creditKills(owner);
-        flying.push(...copies); // copies made earlier in this tick keep flying
+        flying.push(...copies);
         return;
       }
     }
@@ -312,7 +320,7 @@ export class Game {
     const { maze, players } = this.state;
     enemy.hit = Math.max(0, enemy.hit - dt);
     enemy.attackTimer -= dt;
-    if (this.state.enemiesFrozen) return; // freeze cheat: no moving, no attacking
+    if (this.state.enemiesFrozen) return; // freeze cheat
 
     const alive = players.filter(p => p.hp > 0);
     const visible = alive.filter(p => canSee(enemy, p, this.settings.sight, maze));

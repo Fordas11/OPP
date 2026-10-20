@@ -2,9 +2,9 @@ import { SWING_TIME } from '../../shared/core/constants.js';
 import { BASE_REACH } from '../../shared/weapons/weapon.js';
 import type { Enemy, Player } from '../../shared/core/types.js';
 
-export const CAPE_COLORS = ['#9f3e43', '#3e6b9f', '#3e9f5a', '#c9a23a']; // red, blue, green, yellow: one per player
+export const CAPE_COLORS = ['#9f3e43', '#3e6b9f', '#3e9f5a', '#c9a23a']; // one per player
 const SWORD_LENGTH = 46;
-const SWING_ARC = 1.7; // radians to each side of the aim, matches the hit area on the server
+const SWING_ARC = 1.7; // radians each side of the aim
 
 export function drawSkeleton(ctx: CanvasRenderingContext2D, e: Enemy, color = '#c9c1aa'): void {
   if (e.kind === 'runner') return drawRunner(ctx, e);
@@ -46,7 +46,6 @@ export function drawSkeleton(ctx: CanvasRenderingContext2D, e: Enemy, color = '#
   ctx.restore();
 }
 
-/** Factory product has a matching small, quick-looking concrete drawing. */
 function drawRunner(ctx: CanvasRenderingContext2D, e: Enemy): void {
   ctx.save();
   ctx.translate(e.x, e.y); ctx.scale(0.72, 0.72);
@@ -58,7 +57,6 @@ function drawRunner(ctx: CanvasRenderingContext2D, e: Enemy): void {
   ctx.restore();
 }
 
-/** Factory product has a matching large, durable concrete drawing. */
 function drawBrute(ctx: CanvasRenderingContext2D, e: Enemy): void {
   ctx.save();
   ctx.translate(e.x, e.y); ctx.scale(1.28, 1.28);
@@ -80,7 +78,7 @@ export function drawKnight(ctx: CanvasRenderingContext2D, p: Player): void {
   ctx.ellipse(0, 20, 20, 7, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // The body never rotates: only the cape swaps sides as the aim crosses the knight.
+  // The body never rotates; the cape flips with the aim.
   const capeSide = Math.cos(p.aim) >= 0 ? -1 : 1;
   ctx.fillStyle = CAPE_COLORS[p.id % CAPE_COLORS.length];
   ctx.beginPath();
@@ -113,12 +111,12 @@ export function drawKnight(ctx: CanvasRenderingContext2D, p: Player): void {
   ctx.restore();
 }
 
-/** The sword points at the mouse. During an attack it sweeps across in a slash. */
+/** Points at the mouse; sweeps during an attack. */
 function drawSword(ctx: CanvasRenderingContext2D, p: Player): void {
-  const length = SWORD_LENGTH * (p.weapon.reach / BASE_REACH); // upgrades make the sword visibly longer
+  const length = SWORD_LENGTH * (p.weapon.reach / BASE_REACH);
   const swinging = p.attack > 0;
-  const progress = swinging ? 1 - p.attack / SWING_TIME : 0; // 0 at the start of the swing, 1 at the end
-  const eased = 1 - (1 - progress) ** 2; // fast start, slow finish
+  const progress = swinging ? 1 - p.attack / SWING_TIME : 0; // 0..1
+  const eased = 1 - (1 - progress) ** 2; // ease out
   const startAngle = p.aim - SWING_ARC;
   const angle = swinging ? startAngle + 2 * SWING_ARC * eased : p.aim;
 

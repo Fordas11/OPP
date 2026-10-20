@@ -3,7 +3,7 @@ import type { GameSession } from '../session/session.js';
 import { settings } from '../settings/settings.js';
 import { closeSettings, handleBindingKey, handleBindingMouse, isSettingsOpen, openSettings } from '../settings/settingsPanel.js';
 
-/** Facade client 1: the menu buttons. It never touches the WebSocket or the overlays itself. */
+/** Facade client: menu buttons. */
 export class MenuController {
   public constructor(private readonly session: GameSession) {
     const codeInput = document.querySelector<HTMLInputElement>('#codeInput')!;
@@ -24,16 +24,16 @@ export class MenuController {
   }
 }
 
-/** Facade client 2: keyboard and mouse during the game. */
+/** Facade client: in-game keyboard and mouse. */
 export class KeyboardController {
-  private typed = ''; // the last letters typed, used to spot cheat codes like "kkk"
+  private typed = ''; // last 3 letters, for cheat codes
 
   public constructor(private readonly session: GameSession, canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', event => this.onKeyDown(event));
     window.addEventListener('keyup', event => session.releaseKey(event.code));
     window.addEventListener('blur', () => session.releaseAllKeys());
 
-    // The capture phase lets the settings panel take the click before anything else.
+    // Capture phase: the settings panel gets the click first.
     window.addEventListener('mousedown', handleBindingMouse, true);
 
     canvas.addEventListener('mousemove', event => session.moveMouse(event, canvas));
@@ -59,7 +59,7 @@ export class KeyboardController {
     }
     if (!this.session.isPlaying()) return;
 
-    // Command pattern: Ctrl+Z asks the server to undo our newest cheat.
+    // Ctrl+Z: undo our last cheat.
     if (event.ctrlKey && event.code === 'KeyZ') {
       event.preventDefault();
       this.session.undoCheat();
@@ -71,7 +71,7 @@ export class KeyboardController {
     if (!event.repeat) this.typeLetter(event.code);
   }
 
-  /** Remembers the last three letters. Three of the same in a row ("kkk", "jjj", ...) is sent as a cheat code. */
+  /** Sends a cheat when the last 3 letters match a code ("kkk"). */
   private typeLetter(code: string): void {
     if (!code.startsWith('Key')) return;
     this.typed = (this.typed + code.slice(3).toLowerCase()).slice(-3);

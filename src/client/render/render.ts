@@ -1,25 +1,25 @@
 import { ARENA_HEIGHT as H, ARENA_WIDTH as W } from '../../shared/core/constants.js';
 import { MAX_BOUNCES, type ArrowState } from '../../shared/weapons/arrow.js';
-import type { GameState } from '../../shared/core/types.js';
+import type { GameState, IceTile } from '../../shared/core/types.js';
 import { drawEffects } from './effects.js';
 import { isWall, MAZE_COLS, MAZE_LEFT, MAZE_ROWS, MAZE_TOP, TILE } from '../../shared/maze/maze.js';
 import { BAR_STYLES, EnemyHealthBar, PlayerHealthBar } from './healthBars.js';
 import { settings } from '../settings/settings.js';
 import { CAPE_COLORS, drawKnight, drawSkeleton } from './sprites.js';
 
-/** Draws one frame of the game. `myId` is the player controlled in this browser. */
+/** Draws one frame. `myId` is the local player. */
 export function drawGame(ctx: CanvasRenderingContext2D, state: GameState, myId: number): void {
   const scale = ctx.canvas.width / W;
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.clearRect(0, 0, W, H);
 
-  drawMaze(ctx, state.maze, state.iceTiles, state.fireTiles, state.healingTiles, state.themeVisuals.wallColor);
+  drawMaze(ctx, state);
   drawTopBar(ctx, state, myId);
 
   const enemyBar = new EnemyHealthBar(BAR_STYLES[settings.barStyle]);
   [...state.enemies].sort((a, b) => a.y - b.y).forEach(e => {
     drawSkeleton(ctx, e, state.themeVisuals.enemyColor);
-    enemyBar.draw(ctx, e.x, e.y - e.r - 18, e.hp, e.maxHp); // Bridge: same bar abstraction, style from settings
+    enemyBar.draw(ctx, e.x, e.y - e.r - 18, e.hp, e.maxHp);
   });
   state.hearts.forEach(heart => drawHeart(ctx, heart.x, heart.y));
   state.arrows.forEach(arrow => drawArrow(ctx, arrow));
@@ -34,7 +34,31 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: GameState, myId: 
   drawBanner(ctx, state, myId);
 }
 
-function drawMaze(ctx: CanvasRenderingContext2D, maze: string[], iceTiles: { col: number; row: number }[], fireTiles: { col: number; row: number }[], healingTiles: { col: number; row: number }[], wallColor: string): void {
+// The maze is painted once per floor and copied every frame.
+const mazeLayer = document.createElement('canvas');
+let mazeLayerKey = '';
+
+function drawMaze(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const key = [state.maze.join(''), state.themeVisuals.wallColor, ...[state.iceTiles, state.fireTiles, state.healingTiles].map(tileKeys), ctx.canvas.width].join('|');
+  if (key !== mazeLayerKey) {
+    mazeLayerKey = key;
+    mazeLayer.width = ctx.canvas.width;
+    mazeLayer.height = ctx.canvas.height;
+    const layer = mazeLayer.getContext('2d')!;
+    layer.setTransform(ctx.getTransform());
+    paintMaze(layer, state);
+  }
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(mazeLayer, 0, 0);
+  ctx.restore();
+}
+
+function tileKeys(tiles: IceTile[]): string {
+  return tiles.map(tile => `${tile.col},${tile.row}`).join(';');
+}
+
+function paintMaze(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.fillStyle = '#171525';
   ctx.fillRect(0, 0, W, H);
 
@@ -42,17 +66,16 @@ function drawMaze(ctx: CanvasRenderingContext2D, maze: string[], iceTiles: { col
   floor.addColorStop(0, '#2a2640');
   floor.addColorStop(1, '#1c1a2d');
 
+  const ice = new Set(tileKeys(state.iceTiles).split(';'));
+  const fire = new Set(tileKeys(state.fireTiles).split(';'));
+  const healing = new Set(tileKeys(state.healingTiles).split(';'));
   for (let row = 0; row < MAZE_ROWS; row++) {
     for (let col = 0; col < MAZE_COLS; col++) {
       const x = MAZE_LEFT + col * TILE;
       const y = MAZE_TOP + row * TILE;
-      if (isWall(maze, col, row)) drawWall(ctx, x, y, wallColor);
-      else {
-        const special = iceTiles.some(tile => tile.col === col && tile.row === row) ? 'ice'
-          : fireTiles.some(tile => tile.col === col && tile.row === row) ? 'fire'
-          : healingTiles.some(tile => tile.col === col && tile.row === row) ? 'healing' : 'normal';
-        drawFloorTile(ctx, x, y, floor, special);
-      }
+      const tile = `${col},${row}`;
+      if (isWall(state.maze, col, row)) drawWall(ctx, x, y, state.themeVisuals.wallColor);
+      else drawFloorTile(ctx, x, y, floor, ice.has(tile) ? 'ice' : fire.has(tile) ? 'fire' : healing.has(tile) ? 'healing' : 'normal');
     }
   }
 }
@@ -65,7 +88,6 @@ function drawFloorTile(ctx: CanvasRenderingContext2D, x: number, y: number, fill
   ctx.strokeRect(x + 0.5, y + 0.5, TILE - 1, TILE - 1);
 }
 
-/** Visible pickup for the Observer's heart-collected event. */
 function drawHeart(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.save();
   ctx.translate(x, y);
@@ -83,7 +105,7 @@ function drawHeart(ctx: CanvasRenderingContext2D, x: number, y: number): void {
 function drawWall(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {
   ctx.fillStyle = color;
   ctx.fillRect(x, y, TILE, TILE);
-  ctx.fillStyle = '#54495f'; // lighter top of the stone block
+  ctx.fillStyle = '#54495f'; // lighter top
   ctx.fillRect(x + 3, y + 3, TILE - 6, TILE - 12);
   ctx.strokeStyle = '#1b1725';
   ctx.lineWidth = 2;
@@ -103,9 +125,8 @@ function drawTopBar(ctx: CanvasRenderingContext2D, state: GameState, myId: numbe
   ctx.fillStyle = '#b8afbd';
   ctx.fillText(`${count} SKELETON${count === 1 ? '' : 'S'} REMAIN`, 150, 36);
 
-  // One health bar per player, in that player's knight color. Your own bar has a gold outline.
   const players = [...state.players].sort((a, b) => a.id - b.id);
-  // Bridge: the bar (player) and its painting style (from settings) are chosen separately.
+  // Bridge: bar and style are chosen separately.
   const style = BAR_STYLES[settings.barStyle];
   players.forEach((player, index) => {
     const bar = new PlayerHealthBar(style, CAPE_COLORS[player.id % CAPE_COLORS.length], player.id === myId);
@@ -122,7 +143,7 @@ function drawTopBar(ctx: CanvasRenderingContext2D, state: GameState, myId: numbe
   }
 }
 
-/** An arrow flying in its current direction. It gets paler with every bounce it has used. */
+/** Gets paler with every bounce used. */
 function drawArrow(ctx: CanvasRenderingContext2D, arrow: ArrowState): void {
   ctx.save();
   ctx.translate(arrow.x, arrow.y);
@@ -153,7 +174,6 @@ function drawYouMarker(ctx: CanvasRenderingContext2D, x: number, y: number, weap
   ctx.textAlign = 'left';
 }
 
-/** Short message after a cheat code or Ctrl+Z (Command pattern). */
 function drawCheatText(ctx: CanvasRenderingContext2D, x: number, y: number, text: string): void {
   ctx.fillStyle = '#7ef0c8';
   ctx.font = '700 12px DM Mono';
@@ -167,7 +187,7 @@ function drawBanner(ctx: CanvasRenderingContext2D, state: GameState, myId: numbe
 
   if (state.banner > 0) {
     ctx.globalAlpha = Math.min(1, state.banner * 2);
-    ctx.fillStyle = '#0b0914d0'; // dark backing so the text is readable over the walls
+    ctx.fillStyle = '#0b0914d0'; // backing for readability
     ctx.fillRect(W / 2 - 110, 62, 220, 46);
     ctx.font = '800 36px Cinzel';
     ctx.fillStyle = '#f2d98d';

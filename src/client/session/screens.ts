@@ -1,8 +1,8 @@
 export type ScreenName = 'menu' | 'waiting' | 'playing' | 'pause' | 'over';
 
-/** Facade subsystem: which overlay is visible, and the texts on them. */
+/** Facade subsystem: overlays and their texts. */
 export class ScreenManager {
-  // 'playing' has no overlay: the arena is fully visible.
+  // 'playing' has no overlay.
   private readonly overlays: Record<Exclude<ScreenName, 'playing'>, HTMLElement> = {
     menu: document.querySelector<HTMLElement>('#menuScreen')!,
     waiting: document.querySelector<HTMLElement>('#waitingScreen')!,

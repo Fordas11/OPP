@@ -3,7 +3,7 @@ import type { Point } from '../../shared/core/math.js';
 import type { PlayerInput } from '../../shared/core/types.js';
 import { settings } from '../settings/settings.js';
 
-/** Facade subsystem: the keys held down and where the mouse is. */
+/** Facade subsystem: held keys and mouse position. */
 export class InputState {
   private readonly pressedKeys = new Set<string>();
   private readonly mouse: Point = { x: 0, y: 0 }; // in arena coordinates
@@ -32,14 +32,18 @@ export class InputState {
     this.shootRequested = true;
   }
 
-  /** Remembers where the mouse is inside the arena. */
   public moveMouse(event: MouseEvent, canvas: HTMLCanvasElement): void {
     const bounds = canvas.getBoundingClientRect();
     this.mouse.x = ((event.clientX - bounds.left) * ARENA_WIDTH) / bounds.width;
     this.mouse.y = ((event.clientY - bounds.top) * ARENA_HEIGHT) / bounds.height;
   }
 
-  /** Builds the input message for a player standing at `position`. */
+  /** Angle from `position` to the mouse. */
+  public aimFrom(position: Point): number {
+    return Math.atan2(this.mouse.y - position.y, this.mouse.x - position.x);
+  }
+
+  /** Input for a player at `position`. The caller sets `seq`. */
   public readInput(position: Point): PlayerInput {
     const { bindings } = settings;
     const input: PlayerInput = {
@@ -47,9 +51,10 @@ export class InputState {
       down: this.pressedKeys.has(bindings.down),
       left: this.pressedKeys.has(bindings.left),
       right: this.pressedKeys.has(bindings.right),
-      aim: Math.atan2(this.mouse.y - position.y, this.mouse.x - position.x),
+      aim: this.aimFrom(position),
       attack: this.attackRequested,
       shoot: this.shootRequested,
+      seq: 0,
     };
     this.attackRequested = false;
     this.shootRequested = false;

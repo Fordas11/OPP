@@ -1,8 +1,9 @@
 export const ARENA_WIDTH = 960;
 export const ARENA_HEIGHT = 600;
 export const TICK_RATE = 30;
+export const MOVE_STEP = 1 / TICK_RATE; // seconds of movement per input message
 export const MAX_PLAYERS = 4;
-export const SWING_TIME = 0.22; // how long a sword swing lasts, in seconds
+export const SWING_TIME = 0.22; // seconds
 
 export const DIFFICULTIES = {
   calm: { sight: 180, damage: 1 },

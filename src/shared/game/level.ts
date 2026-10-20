@@ -13,14 +13,14 @@ const SPAWN_OFFSETS = [
   { x: 26, y: 26 },
 ];
 
-/** Where a player stands at the start of every floor. */
+/** Player start position. */
 export function playerSpawn(index: number): Point {
   const start = startPoint();
   const offset = SPAWN_OFFSETS[index % SPAWN_OFFSETS.length];
   return { x: start.x + offset.x, y: start.y + offset.y };
 }
 
-/** Skeletons, placed in random maze cells away from the players' start room. More players means more skeletons. */
+/** Random cells away from the start; more players, more enemies. */
 export function createEnemies(level: number, maze: string[], playerCount: number, hazardTiles: IceTile[] = []): Enemy[] {
   const start = startPoint();
   const spots = cellCenters(maze)
@@ -28,7 +28,7 @@ export function createEnemies(level: number, maze: string[], playerCount: number
     .filter(cell => !hazardTiles.some(tile => {
       const center = tileCenter(tile.col, tile.row);
       return cell.x === center.x && cell.y === center.y;
-    })) // never on a flame
+    }))
     .sort(() => Math.random() - 0.5);
 
   const enemies: Enemy[] = [];
@@ -36,14 +36,14 @@ export function createEnemies(level: number, maze: string[], playerCount: number
   const kinds: EnemyKind[] = ['skeleton', 'runner', 'brute'];
 
   for (let i = 0; i < level + playerCount; i++) {
-    const spot = spots[i % spots.length]; // reuse cells if there are more skeletons than cells
+    const spot = spots[i % spots.length]; // reuse cells if needed
     const kind = kinds[(i + level - 1) % kinds.length];
     enemies.push(factory.create(kind, spot, level));
   }
   return enemies;
 }
 
-/** Hearts only appear on ordinary floor, never on a hazard or healing tile. */
+/** Hearts only on plain floor. */
 export function createHearts(level: number, maze: string[], specialTiles: IceTile[] = []): HeartPickup[] {
   const start = startPoint();
   const spots = cellCenters(maze)

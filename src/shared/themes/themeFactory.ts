@@ -109,11 +109,10 @@ export function themeForLevel(level: number): ThemeFactory {
   return campaign[Math.min(level, campaign.length) - 1];
 }
 
-/** Converts the three Abstract Factory products into data safe to send to the browser. */
-export function visualsFrom(factory: ThemeFactory): { wallColor: string; enemyColor: string; effectColor: string } {
+/** Theme colors for the browser. */
+export function visualsFrom(factory: ThemeFactory): { wallColor: string; enemyColor: string } {
   return {
     wallColor: factory.createMazeAppearance().wallColor,
     enemyColor: factory.createEnemyAppearance('skeleton').color,
-    effectColor: factory.createEffectAppearance().hitColor,
   };
 }
