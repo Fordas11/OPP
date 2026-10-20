@@ -1,3 +1,4 @@
+import { CHEAT_CODES } from '../../shared/cheats/cheats.js';
 import type { GameSession } from '../session/session.js';
 import { settings } from '../settings/settings.js';
 import { closeSettings, handleBindingKey, handleBindingMouse, isSettingsOpen, openSettings } from '../settings/settingsPanel.js';
@@ -25,6 +26,8 @@ export class MenuController {
 
 /** Facade client 2: keyboard and mouse during the game. */
 export class KeyboardController {
+  private typed = ''; // the last letters typed, used to spot cheat codes like "kkk"
+
   public constructor(private readonly session: GameSession, canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', event => this.onKeyDown(event));
     window.addEventListener('keyup', event => session.releaseKey(event.code));
@@ -56,7 +59,25 @@ export class KeyboardController {
     }
     if (!this.session.isPlaying()) return;
 
+    // Command pattern: Ctrl+Z asks the server to undo our newest cheat.
+    if (event.ctrlKey && event.code === 'KeyZ') {
+      event.preventDefault();
+      this.session.undoCheat();
+      return;
+    }
+
     event.preventDefault();
     this.session.pressKey(event.code);
+    if (!event.repeat) this.typeLetter(event.code);
+  }
+
+  /** Remembers the last three letters. Three of the same in a row ("kkk", "jjj", ...) is sent as a cheat code. */
+  private typeLetter(code: string): void {
+    if (!code.startsWith('Key')) return;
+    this.typed = (this.typed + code.slice(3).toLowerCase()).slice(-3);
+    if (CHEAT_CODES[this.typed]) {
+      this.session.sendCheat(this.typed);
+      this.typed = '';
+    }
   }
 }

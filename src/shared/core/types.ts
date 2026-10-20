@@ -17,6 +17,9 @@ export interface Player {
   weapon: WeaponInfo; // what the game shows about this player's weapon
   ammo: number; // arrows left for the bow; refilled on every new floor
   maxAmmo: number;
+  godMode: boolean; // cheat: enemies and floors cannot hurt this knight
+  cheatText: string; // last cheat message, shown above this knight for a moment
+  cheatTimer: number; // time left to show cheatText
 }
 
 /** What the browsers show about a player's sword. */
@@ -67,6 +70,7 @@ export interface GameState {
   arrows: ArrowState[];
   theme: 'crypt' | 'frost' | 'fire' | 'garden';
   themeVisuals: { wallColor: string; enemyColor: string; effectColor: string };
+  enemiesFrozen: boolean; // cheat: enemies stand still and do not attack
 }
 
 /** What a client tells the server about its player every tick. */

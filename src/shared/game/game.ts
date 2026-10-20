@@ -1,3 +1,4 @@
+import { CHEAT_CODES, CheatInvoker, CheatReceiver } from '../cheats/cheats.js';
 import { DIFFICULTIES, SWING_TIME, type Difficulty } from '../core/constants.js';
 import { createEnemies, createHearts, playerSpawn } from './level.js';
 import { createMazeLayout, isWallAt } from '../maze/maze.js';
@@ -25,6 +26,8 @@ export class Game {
   private readonly events = new GameEventPublisher();
   private readonly weapons = new Map<number, Weapon>(); // each player's current weapon (with upgrades)
   private readonly upgradesEarned = new Map<number, number>(); // how many upgrades each weapon already has
+  private readonly cheats = new Map<number, CheatInvoker>(); // Command: each player's own cheat history
+  private readonly cheatReceivers = new Map<number, CheatReceiver>(); // Command: one receiver per player, shared by all their cheats
   private arrows: Arrow[] = [];
   private theme: ThemeFactory;
 
@@ -47,11 +50,14 @@ export class Game {
       arrows: [],
       theme: this.theme.id,
       themeVisuals: visualsFrom(this.theme),
+      enemiesFrozen: false,
     };
     this.events.subscribe(new EffectObserver(this.state, () => this.theme.createEffectAppearance().hitColor));
     for (const id of playerIds) {
       this.inputs.set(id, { ...NO_INPUT });
       this.weapons.set(id, new Sword());
+      this.cheats.set(id, new CheatInvoker());
+      this.cheatReceivers.set(id, new CheatReceiver(this.state.players.find(p => p.id === id)!, this.state));
     }
     this.state.players.forEach(player => this.describeWeapon(player));
   }
@@ -63,6 +69,26 @@ export class Game {
     this.weapons.delete(playerId);
     this.upgradesEarned.delete(playerId);
     this.arrows = this.arrows.filter(arrow => arrow.ownerId !== playerId);
+    this.cheats.delete(playerId);
+    this.cheatReceivers.delete(playerId);
+  }
+
+  /** Command pattern client: turns a typed code into a command with the player's receiver and gives it to the invoker. */
+  public cheat(playerId: number, code: string): void {
+    const receiver = this.cheatReceivers.get(playerId);
+    const createCommand = CHEAT_CODES[code];
+    if (!receiver || !createCommand || this.state.phase !== 'playing') return;
+    const command = createCommand(receiver);
+    this.cheats.get(playerId)!.run(command);
+    receiver.announce(`CHEAT: ${command.describe()}`);
+  }
+
+  /** Ctrl+Z: undoes this player's newest cheat. Pressing it again undoes the one before. */
+  public undoCheat(playerId: number): void {
+    const receiver = this.cheatReceivers.get(playerId);
+    if (!receiver || this.state.phase !== 'playing') return;
+    const command = this.cheats.get(playerId)!.undo();
+    receiver.announce(command ? `UNDO: ${command.describe()}` : 'nothing to undo');
   }
 
   /** Stores the newest input. A click is remembered until the next update uses it. */
@@ -139,10 +165,11 @@ export class Game {
 
   private createPlayer(id: number, index: number): Player {
     const { x, y } = playerSpawn(index);
-    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0, kills: 0, weapon: { name: '', damage: 0, reach: 0 }, ammo: MAX_AMMO, maxAmmo: MAX_AMMO };
+    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0, kills: 0, weapon: { name: '', damage: 0, reach: 0 }, ammo: MAX_AMMO, maxAmmo: MAX_AMMO, godMode: false, cheatText: '', cheatTimer: 0 };
   }
 
   private updatePlayer(player: Player, dt: number): void {
+    player.cheatTimer = Math.max(0, player.cheatTimer - dt);
     if (player.hp <= 0) return;
     const input = this.inputs.get(player.id)!;
 
@@ -161,7 +188,9 @@ export class Game {
       if (this.state.enemies.some(enemy => distance(player, enemy) < player.r + enemy.r)) { player.x = oldX; player.y = oldY; }
     }
 
+    const hpBefore = player.hp;
     const floorResult = this.theme.createFloorRules().apply(player, this.state, dt);
+    if (player.godMode) player.hp = Math.max(player.hp, hpBefore); // god mode cheat: ice and fire do no damage
     if (floorResult !== 'none') this.events.notify({ type: floorResult, x: player.x, y: player.y });
     this.collectHeart(player);
 
@@ -283,6 +312,7 @@ export class Game {
     const { maze, players } = this.state;
     enemy.hit = Math.max(0, enemy.hit - dt);
     enemy.attackTimer -= dt;
+    if (this.state.enemiesFrozen) return; // freeze cheat: no moving, no attacking
 
     const alive = players.filter(p => p.hp > 0);
     const visible = alive.filter(p => canSee(enemy, p, this.settings.sight, maze));
@@ -290,7 +320,7 @@ export class Game {
 
     strategyFor(enemy, target).move(enemy, { maze, target, dt });
 
-    const victim = alive.find(p => distance(p, enemy) < 41 && p.hurt <= 0);
+    const victim = alive.find(p => distance(p, enemy) < 41 && p.hurt <= 0 && !p.godMode);
     if (victim && enemy.attackTimer <= 0) {
       victim.hp -= this.settings.damage;
       victim.hurt = 0.58;

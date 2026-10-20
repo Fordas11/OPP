@@ -7,6 +7,8 @@ export type ClientMessage =
   | { type: 'join-room'; code: string }
   | { type: 'start-game' } // only the host (first player in the room) can do this
   | { type: 'input'; input: PlayerInput }
+  | { type: 'cheat'; code: string } // for example "kkk"
+  | { type: 'undo-cheat' } // Ctrl+Z: takes back this player's newest cheat
   | { type: 'restart' };
 
 /** Messages sent from the server to the browser (as JSON). */

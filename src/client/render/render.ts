@@ -27,6 +27,7 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: GameState, myId: 
     if (player.hp <= 0) continue;
     drawKnight(ctx, player);
     if (player.id === myId) drawYouMarker(ctx, player.x, player.y, player.weapon.name);
+    if (player.cheatTimer > 0) drawCheatText(ctx, player.x, player.y, player.cheatText);
   }
 
   drawEffects(ctx, W, H);
@@ -149,6 +150,15 @@ function drawYouMarker(ctx: CanvasRenderingContext2D, x: number, y: number, weap
   ctx.textAlign = 'center';
   ctx.fillText('YOU', x, y - 34);
   ctx.fillText(weapon, x, y - 46);
+  ctx.textAlign = 'left';
+}
+
+/** Short message after a cheat code or Ctrl+Z (Command pattern). */
+function drawCheatText(ctx: CanvasRenderingContext2D, x: number, y: number, text: string): void {
+  ctx.fillStyle = '#7ef0c8';
+  ctx.font = '700 12px DM Mono';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, x, y - 60);
   ctx.textAlign = 'left';
 }
 

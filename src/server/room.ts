@@ -56,6 +56,16 @@ export class Room {
     if (member) this.game?.setInput(member.id, input);
   }
 
+  public handleCheat(socket: WebSocket, code: string): void {
+    const member = this.members.find(m => m.socket === socket);
+    if (member) this.game?.cheat(member.id, code);
+  }
+
+  public undoCheat(socket: WebSocket): void {
+    const member = this.members.find(m => m.socket === socket);
+    if (member) this.game?.undoCheat(member.id);
+  }
+
   /** The others keep playing. If the host leaves before the start, the next player becomes host. */
   public remove(socket: WebSocket): void {
     const index = this.members.findIndex(member => member.socket === socket);

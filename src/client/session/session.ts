@@ -67,6 +67,8 @@ export class GameSession {
   public moveMouse(event: MouseEvent, canvas: HTMLCanvasElement): void { this.input.moveMouse(event, canvas); }
   public attack(): void { this.input.requestAttack(); }
   public shoot(): void { this.input.requestShoot(); }
+  public sendCheat(code: string): void { this.connection.send({ type: 'cheat', code }); }
+  public undoCheat(): void { this.connection.send({ type: 'undo-cheat' }); }
 
   /** Sends our keys and mouse to the server. Called as often as the server runs its ticks. */
   public sendInput(): void {

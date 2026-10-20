@@ -5,7 +5,7 @@ export type BarStyleName = 'solid' | 'segmented';
 
 const STORAGE_KEY = 'dungeon-crawler-settings';
 
-export const DEFAULT_BINDINGS: Record<Action, string> = {
+const DEFAULT_BINDINGS: Record<Action, string> = {
   up: 'KeyW',
   down: 'KeyS',
   left: 'KeyA',
