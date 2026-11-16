@@ -1,6 +1,10 @@
 import { CHEAT_CODES, CheatInvoker, CheatReceiver } from '../cheats/cheats.js';
+import { ConsoleError, parseCommand } from '../console/interpreter.js';
+import { GameConsoleContext } from '../console/gameConsoleContext.js';
+import { createDamageChain } from '../damage/damageChain.js';
+import { CollectPickupVisitor, DescribePickupVisitor, NeedsPickupVisitor, type Pickup } from '../pickups/pickups.js';
 import { DIFFICULTIES, MOVE_STEP, SWING_TIME, type Difficulty } from '../core/constants.js';
-import { createEnemies, createHearts, playerSpawn } from './level.js';
+import { createEnemies, createPickups, playerSpawn } from './level.js';
 import { createMazeLayout, isWallAt } from '../maze/maze.js';
 import { distance } from '../core/math.js';
 import { ARROW_PROTOTYPE, SPLIT_ANGLE, SPLIT_FROM_LEVEL, type Arrow } from '../weapons/arrow.js';
@@ -31,6 +35,8 @@ export class Game {
   private readonly cheats = new Map<number, CheatInvoker>();
   private readonly cheatReceivers = new Map<number, CheatReceiver>();
   private arrows: Arrow[] = [];
+  private pickups: Pickup[];
+  private readonly damageChain = createDamageChain();
   private theme: ThemeFactory;
   private floorRules: FloorRules;
 
@@ -39,6 +45,7 @@ export class Game {
     this.theme = themeForLevel(1);
     this.floorRules = this.theme.createFloorRules();
     const layout = createMazeLayout(this.theme.mazeVariant);
+    this.pickups = createPickups(1, layout.tiles, [...layout.iceTiles, ...layout.fireTiles, ...layout.healingTiles]);
     this.state = {
       level: 1,
       phase: 'playing',
@@ -49,7 +56,7 @@ export class Game {
       iceTiles: layout.iceTiles,
       fireTiles: layout.fireTiles,
       healingTiles: layout.healingTiles,
-      hearts: createHearts(1, layout.tiles, [...layout.iceTiles, ...layout.fireTiles, ...layout.healingTiles]),
+      pickups: this.pickups,
       effects: [],
       arrows: [],
       theme: this.theme.id,
@@ -94,6 +101,21 @@ export class Game {
     if (!receiver || this.state.phase !== 'playing') return;
     const command = this.cheats.get(playerId)!.undo();
     receiver.announce(command ? `UNDO: ${command.describe()}` : 'nothing to undo');
+  }
+
+  /** Interpreter client: runs a console line for one player and returns the answer. */
+  public runConsole(playerId: number, text: string): string {
+    const player = this.state.players.find(p => p.id === playerId);
+    const receiver = this.cheatReceivers.get(playerId);
+    if (!player || !receiver || this.state.phase !== 'playing') return 'The console only works during a game.';
+    const context = new GameConsoleContext(player, this.state, receiver);
+    try {
+      parseCommand(text.slice(0, 100)).interpret(context);
+    } catch (error) {
+      if (!(error instanceof ConsoleError)) throw error;
+      context.say(error.message);
+    }
+    return context.lines.join(' ');
   }
 
   /** Stores the input and queues it as one movement step. Clicks stay until used. */
@@ -148,7 +170,8 @@ export class Game {
     state.iceTiles = layout.iceTiles;
     state.fireTiles = layout.fireTiles;
     state.healingTiles = layout.healingTiles;
-    state.hearts = createHearts(state.level, layout.tiles, [...layout.iceTiles, ...layout.fireTiles, ...layout.healingTiles]);
+    this.pickups = createPickups(state.level, layout.tiles, [...layout.iceTiles, ...layout.fireTiles, ...layout.healingTiles]);
+    state.pickups = this.pickups;
     state.enemies = createEnemies(state.level, state.maze, state.players.length, layout.fireTiles);
     state.players.forEach((player, index) => Object.assign(player, playerSpawn(index), { ammo: player.maxAmmo }));
     this.arrows = [];
@@ -176,11 +199,11 @@ export class Game {
 
   private createPlayer(id: number, index: number): Player {
     const { x, y } = playerSpawn(index);
-    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0, kills: 0, weapon: { name: '', damage: 0, reach: 0 }, ammo: MAX_AMMO, maxAmmo: MAX_AMMO, godMode: false, cheatText: '', cheatTimer: 0, inputSeq: 0 };
+    return { id, x, y, r: 18, hp: 6, maxHp: 6, aim: 0, attack: 0, cooldown: 0, hurt: 0, speed: 245, environmentTimer: 0, kills: 0, weapon: { name: '', damage: 0, reach: 0 }, ammo: MAX_AMMO, maxAmmo: MAX_AMMO, godMode: false, shield: 0, notice: '', noticeTimer: 0, inputSeq: 0 };
   }
 
   private updatePlayer(player: Player, dt: number): void {
-    player.cheatTimer = Math.max(0, player.cheatTimer - dt);
+    player.noticeTimer = Math.max(0, player.noticeTimer - dt);
     const moves = this.moves.get(player.id)!;
     if (player.hp <= 0) { moves.length = 0; return; }
     const input = this.inputs.get(player.id)!;
@@ -200,7 +223,7 @@ export class Game {
     const floorResult = this.floorRules.apply(player, this.state, dt);
     if (player.godMode) player.hp = Math.max(player.hp, hpBefore); // god mode
     if (floorResult !== 'none') this.events.notify({ type: floorResult, x: player.x, y: player.y });
-    this.collectHeart(player);
+    this.collectPickup(player);
 
     if (input.attack) {
       input.attack = false;
@@ -212,13 +235,19 @@ export class Game {
     }
   }
 
-  private collectHeart(player: Player): void {
-    if (player.hp >= player.maxHp) return;
-    const heart = this.state.hearts.find(item => distance(player, item) < player.r + 14);
-    if (!heart) return;
-    player.hp = Math.min(player.maxHp, player.hp + heart.amount);
-    this.state.hearts = this.state.hearts.filter(item => item !== heart);
-    this.events.notify({ type: 'heart-collected', x: heart.x, y: heart.y });
+  /** Visitors: pick up the first item here that the player can use. */
+  private collectPickup(player: Player): void {
+    const needs = new NeedsPickupVisitor(player);
+    const pickup = this.pickups.find(item => distance(player, item) < player.r + 14 && item.accept(needs));
+    if (!pickup) return;
+
+    pickup.accept(new CollectPickupVisitor(player));
+    const { text, color } = pickup.accept(new DescribePickupVisitor());
+    player.notice = text;
+    player.noticeTimer = 2;
+    this.pickups = this.pickups.filter(item => item !== pickup);
+    this.state.pickups = this.pickups;
+    this.events.notify({ type: 'pickup-collected', x: pickup.x, y: pickup.y, color });
   }
 
   private swingSword(player: Player): void {
@@ -328,12 +357,14 @@ export class Game {
 
     strategyFor(enemy, target).move(enemy, { maze, target, dt });
 
-    const victim = alive.find(p => distance(p, enemy) < 41 && p.hurt <= 0 && !p.godMode);
-    if (victim && enemy.attackTimer <= 0) {
-      victim.hp -= this.settings.damage;
-      victim.hurt = 0.58;
+    // Chain of Responsibility: the damage rules decide what a hit does.
+    if (enemy.attackTimer > 0) return;
+    for (const victim of alive.filter(p => distance(p, enemy) < 41)) {
+      const outcome = this.damageChain.handle({ victim, amount: this.settings.damage });
+      if (outcome === 'ignored') continue;
       enemy.attackTimer = 1.05;
-      this.events.notify({ type: 'player-hit', x: victim.x, y: victim.y });
+      this.events.notify({ type: outcome === 'shield-broken' ? 'shield-broken' : 'player-hit', x: victim.x, y: victim.y });
+      break;
     }
   }
 }

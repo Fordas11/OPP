@@ -61,6 +61,11 @@ export class Room {
     if (member) this.game?.cheat(member.id, code);
   }
 
+  public handleConsole(socket: WebSocket, text: string): void {
+    const member = this.members.find(m => m.socket === socket);
+    if (member && this.game) member.connection.send({ type: 'console', text: this.game.runConsole(member.id, text) });
+  }
+
   public undoCheat(socket: WebSocket): void {
     const member = this.members.find(m => m.socket === socket);
     if (member) this.game?.undoCheat(member.id);

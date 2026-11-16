@@ -51,4 +51,8 @@ button:hover { background: #ad5050; transform: translate(-1px, -1px); box-shadow
 .difficulty-options.two-options { grid-template-columns: repeat(2, 1fr); }
 .difficulty-options strong, .difficulty-options small { display: block; }
 .difficulty-options small { margin-top: 7px; color: inherit; font-size: 9px; line-height: 1.35; opacity: .8; }
+.console { position: absolute; left: 16px; right: 16px; bottom: 12px; display: grid; gap: 6px; pointer-events: none; }
+#consoleLog { color: #7ef0c8; font-size: 13px; text-shadow: 1px 1px 0 #000; }
+#consoleInput { padding: 9px 11px; border: 1px solid #63596d; background: #14111df0; color: #7ef0c8; font: 14px "DM Mono", monospace; pointer-events: auto; }
+#consoleInput.hidden { display: none; }
 @media (max-width: 650px) { .settings-card { padding: 19px; } }

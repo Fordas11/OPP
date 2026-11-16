@@ -3,6 +3,7 @@ import type { ServerMessage } from '../../shared/core/messages.js';
 import type { GameState } from '../../shared/core/types.js';
 import { addBurst, addFlash, clearEffects } from '../render/effects.js';
 import { InputState } from '../input/input.js';
+import { ConsolePanel } from './consolePanel.js';
 import { ServerConnection } from './network.js';
 import { ScreenManager } from './screens.js';
 import { Smoothing } from './smoothing.js';
@@ -14,6 +15,7 @@ export class GameSession {
   private readonly screens = new ScreenManager();
   private readonly input = new InputState();
   private readonly smoothing = new Smoothing();
+  private readonly consolePanel = new ConsolePanel(text => this.connection.send({ type: 'console', text }));
   private myId = 0;
   private state: GameState | null = null;
 
@@ -43,6 +45,7 @@ export class GameSession {
     this.input.releaseAllKeys();
     this.smoothing.reset();
     clearEffects();
+    this.consolePanel.clear();
     this.screens.setText('#menuMessage', message);
     this.screens.showScreen('menu');
   }
@@ -67,6 +70,10 @@ export class GameSession {
   public shoot(): void { this.input.requestShoot(); }
   public sendCheat(code: string): void { this.connection.send({ type: 'cheat', code }); }
   public undoCheat(): void { this.connection.send({ type: 'undo-cheat' }); }
+  public openConsole(): void {
+    this.input.releaseAllKeys();
+    this.consolePanel.open();
+  }
 
   /** One movement step: predict it locally and send it. */
   public sendInput(): void {
@@ -112,6 +119,9 @@ export class GameSession {
       case 'state':
         this.onState(message.state);
         break;
+      case 'console':
+        this.consolePanel.print(message.text);
+        break;
       case 'error':
         this.screens.setText('#menuMessage', message.message);
         break;
@@ -137,6 +147,7 @@ export class GameSession {
     if (next.phase === 'over' && this.screens.currentScreen() !== 'over') {
       this.screens.setText('#finalLevel', `You reached floor ${next.level}.`);
       this.input.releaseAllKeys();
+      this.consolePanel.close();
       this.screens.showScreen('over');
     }
   }

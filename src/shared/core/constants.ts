@@ -4,6 +4,7 @@ export const TICK_RATE = 30;
 export const MOVE_STEP = 1 / TICK_RATE; // seconds of movement per input message
 export const MAX_PLAYERS = 4;
 export const SWING_TIME = 0.22; // seconds
+export const MAX_SHIELD = 2; // hits a knight can block
 
 export const DIFFICULTIES = {
   calm: { sight: 180, damage: 1 },

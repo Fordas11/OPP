@@ -18,8 +18,9 @@ export interface Player {
   ammo: number; // refilled every floor
   maxAmmo: number;
   godMode: boolean;
-  cheatText: string; // shown above the knight
-  cheatTimer: number;
+  shield: number; // hits it can still block
+  notice: string; // short message shown above the knight
+  noticeTimer: number;
   inputSeq: number; // last movement step done by the server
 }
 
@@ -46,7 +47,8 @@ export interface Enemy {
 }
 
 export interface IceTile { col: number; row: number; }
-export interface HeartPickup { x: number; y: number; amount: number; }
+/** An item lying on the floor. */
+export interface PickupData { kind: 'heart' | 'ammo' | 'shield'; x: number; y: number; amount: number; }
 
 /** A particle burst. */
 export interface Effect {
@@ -66,7 +68,7 @@ export interface GameState {
   iceTiles: IceTile[];
   fireTiles: IceTile[];
   healingTiles: IceTile[];
-  hearts: HeartPickup[];
+  pickups: PickupData[];
   effects: Effect[];
   arrows: ArrowState[];
   theme: 'crypt' | 'frost' | 'fire' | 'garden';

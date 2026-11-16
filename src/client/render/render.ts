@@ -1,6 +1,6 @@
-import { ARENA_HEIGHT as H, ARENA_WIDTH as W } from '../../shared/core/constants.js';
+import { ARENA_HEIGHT as H, ARENA_WIDTH as W, MAX_SHIELD } from '../../shared/core/constants.js';
 import { MAX_BOUNCES, type ArrowState } from '../../shared/weapons/arrow.js';
-import type { GameState, IceTile } from '../../shared/core/types.js';
+import type { GameState, IceTile, PickupData } from '../../shared/core/types.js';
 import { drawEffects } from './effects.js';
 import { isWall, MAZE_COLS, MAZE_LEFT, MAZE_ROWS, MAZE_TOP, TILE } from '../../shared/maze/maze.js';
 import { BAR_STYLES, EnemyHealthBar, PlayerHealthBar } from './healthBars.js';
@@ -21,13 +21,14 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: GameState, myId: 
     drawSkeleton(ctx, e, state.themeVisuals.enemyColor);
     enemyBar.draw(ctx, e.x, e.y - e.r - 18, e.hp, e.maxHp);
   });
-  state.hearts.forEach(heart => drawHeart(ctx, heart.x, heart.y));
+  state.pickups.forEach(pickup => drawPickup(ctx, pickup));
   state.arrows.forEach(arrow => drawArrow(ctx, arrow));
   for (const player of state.players) {
     if (player.hp <= 0) continue;
     drawKnight(ctx, player);
+    if (player.shield > 0) drawShield(ctx, player.x, player.y, player.r);
     if (player.id === myId) drawYouMarker(ctx, player.x, player.y, player.weapon.name);
-    if (player.cheatTimer > 0) drawCheatText(ctx, player.x, player.y, player.cheatText);
+    if (player.noticeTimer > 0) drawNotice(ctx, player.x, player.y, player.notice);
   }
 
   drawEffects(ctx, W, H);
@@ -88,6 +89,12 @@ function drawFloorTile(ctx: CanvasRenderingContext2D, x: number, y: number, fill
   ctx.strokeRect(x + 0.5, y + 0.5, TILE - 1, TILE - 1);
 }
 
+function drawPickup(ctx: CanvasRenderingContext2D, pickup: PickupData): void {
+  if (pickup.kind === 'heart') drawHeart(ctx, pickup.x, pickup.y);
+  else if (pickup.kind === 'ammo') drawArrowBundle(ctx, pickup.x, pickup.y);
+  else drawShieldItem(ctx, pickup.x, pickup.y);
+}
+
 function drawHeart(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.save();
   ctx.translate(x, y);
@@ -100,6 +107,55 @@ function drawHeart(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.fill();
   ctx.strokeStyle = '#ffd5dc'; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.restore();
+}
+
+function drawArrowBundle(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-0.6);
+  ctx.strokeStyle = '#e5d6a2';
+  ctx.lineWidth = 3;
+  for (const offset of [-6, 0, 6]) {
+    ctx.beginPath();
+    ctx.moveTo(-14, offset);
+    ctx.lineTo(10, offset);
+    ctx.stroke();
+    ctx.fillStyle = '#f4f0e0';
+    ctx.beginPath();
+    ctx.moveTo(16, offset);
+    ctx.lineTo(9, offset - 4);
+    ctx.lineTo(9, offset + 4);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawShieldItem(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#3f78c4';
+  ctx.beginPath();
+  ctx.moveTo(-12, -12);
+  ctx.lineTo(12, -12);
+  ctx.lineTo(12, 2);
+  ctx.quadraticCurveTo(12, 12, 0, 16);
+  ctx.quadraticCurveTo(-12, 12, -12, 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#cfe4ff'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.restore();
+}
+
+/** Blue ring around a knight that still has shield charges. */
+function drawShield(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+  ctx.strokeStyle = '#7fb8ff';
+  ctx.globalAlpha = 0.75;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x, y, r + 8, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 
 function drawWall(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {
@@ -139,6 +195,8 @@ function drawTopBar(ctx: CanvasRenderingContext2D, state: GameState, myId: numbe
     ctx.font = '13px DM Mono';
     ctx.fillStyle = me.ammo > 0 ? '#e8dcb9' : '#d46a5f';
     ctx.fillText(`ARROWS ${me.ammo}/${me.maxAmmo}`, W - 25, 36);
+    ctx.fillStyle = me.shield > 0 ? '#7fb8ff' : '#7d7488';
+    ctx.fillText(`SHIELD ${me.shield}/${MAX_SHIELD}`, W - 175, 36);
     ctx.textAlign = 'left';
   }
 }
@@ -174,7 +232,7 @@ function drawYouMarker(ctx: CanvasRenderingContext2D, x: number, y: number, weap
   ctx.textAlign = 'left';
 }
 
-function drawCheatText(ctx: CanvasRenderingContext2D, x: number, y: number, text: string): void {
+function drawNotice(ctx: CanvasRenderingContext2D, x: number, y: number, text: string): void {
   ctx.fillStyle = '#7ef0c8';
   ctx.font = '700 12px DM Mono';
   ctx.textAlign = 'center';

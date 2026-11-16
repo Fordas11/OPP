@@ -59,6 +59,13 @@ export class KeyboardController {
     }
     if (!this.session.isPlaying()) return;
 
+    // ~: open the console.
+    if (event.code === 'Backquote') {
+      event.preventDefault();
+      this.session.openConsole();
+      return;
+    }
+
     // Ctrl+Z: undo our last cheat.
     if (event.ctrlKey && event.code === 'KeyZ') {
       event.preventDefault();

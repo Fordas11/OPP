@@ -27,8 +27,8 @@ export class CheatReceiver {
   public setEnemiesFrozen(frozen: boolean): void { this.state.enemiesFrozen = frozen; }
 
   public announce(text: string): void {
-    this.player.cheatText = text;
-    this.player.cheatTimer = 2;
+    this.player.notice = text;
+    this.player.noticeTimer = 2;
   }
 }
 

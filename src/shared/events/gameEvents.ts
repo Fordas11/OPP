@@ -1,6 +1,6 @@
 import type { Effect, GameState } from '../core/types.js';
 
-export type GameEvent = { type: 'enemy-hit'; x: number; y: number } | { type: 'enemy-defeated'; x: number; y: number } | { type: 'player-hit' | 'ice-damage' | 'fire-damage'; x: number; y: number } | { type: 'heart-collected' | 'healed' | 'arrow-bounce'; x: number; y: number };
+export type GameEvent = { type: 'enemy-hit'; x: number; y: number } | { type: 'enemy-defeated'; x: number; y: number } | { type: 'player-hit' | 'ice-damage' | 'fire-damage'; x: number; y: number } | { type: 'shield-broken' | 'healed' | 'arrow-bounce'; x: number; y: number } | { type: 'pickup-collected'; x: number; y: number; color: string };
 export interface GameEventObserver { update(event: GameEvent): void; }
 
 /** Observer subject. */
@@ -14,8 +14,12 @@ export class GameEventPublisher {
 export class EffectObserver implements GameEventObserver {
   public constructor(private readonly state: GameState, private readonly hitColor: () => string) {}
   public update(event: GameEvent): void {
-    const effect: Effect = event.type === 'heart-collected' || event.type === 'healed'
+    const effect: Effect = event.type === 'pickup-collected'
+      ? { x: event.x, y: event.y, color: event.color, amount: 16 }
+      : event.type === 'healed'
       ? { x: event.x, y: event.y, color: '#ff6f91', amount: 16 }
+      : event.type === 'shield-broken'
+      ? { x: event.x, y: event.y, color: '#7fb8ff', amount: 14 }
       : event.type === 'arrow-bounce'
         ? { x: event.x, y: event.y, color: '#f3d58b', amount: 4 }
       : event.type === 'ice-damage'

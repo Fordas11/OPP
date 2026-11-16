@@ -42,6 +42,9 @@ function handleMessage(socket: WebSocket, message: ClientMessage): void {
     case 'cheat':
       findRoom(socket)?.handleCheat(socket, String(message.code));
       break;
+    case 'console':
+      findRoom(socket)?.handleConsole(socket, String(message.text));
+      break;
     case 'undo-cheat':
       findRoom(socket)?.undoCheat(socket);
       break;
