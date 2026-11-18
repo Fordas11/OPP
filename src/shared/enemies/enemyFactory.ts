@@ -1,5 +1,6 @@
 import { randomBetween, type Point } from '../core/math.js';
 import type { Enemy } from '../core/types.js';
+import { EnemyInstance, EnemyTypeFactory } from './enemyFlyweight.js';
 
 /** Factory: creates the three enemy kinds. */
 export type EnemyKind = Enemy['kind'];
@@ -14,12 +15,11 @@ abstract class EnemyProduct {
 
   public create(position: Point, level: number): Enemy {
     const hp = this.baseHp + Math.floor(level / 4);
-    return {
-      id: nextId++, kind: this.kind, x: position.x + randomBetween(-6, 6), y: position.y + randomBetween(-6, 6),
-      r: this.radius, hp, maxHp: hp, speed: this.baseSpeed + level * 4,
-      hit: 0, attackTimer: randomBetween(0.2, 0.9), wobble: Math.random() * 6,
-      wanderAngle: Math.random() * Math.PI * 2, wanderTime: randomBetween(0.4, 1.7),
-    };
+    const type = EnemyTypeFactory.getType(this.kind, this.radius, hp, this.baseSpeed + level * 4);
+    return new EnemyInstance(
+      nextId++, position.x + randomBetween(-6, 6), position.y + randomBetween(-6, 6), hp,
+      randomBetween(0.2, 0.9), Math.random() * 6, Math.random() * Math.PI * 2, randomBetween(0.4, 1.7), type,
+    );
   }
 }
 

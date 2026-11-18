@@ -1,10 +1,11 @@
 import type { WebSocket } from 'ws';
 import type { Difficulty } from '../shared/core/constants.js';
+import type { GameCollection, GameIterator } from '../shared/core/iterator.js';
 import { Room, send } from './room.js';
 
 const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O
 /** Singleton room registry. Node is single-threaded, so operations cannot interleave. */
-export class RoomRegistry {
+export class RoomRegistry implements GameCollection<Room> {
   private static instance: RoomRegistry | undefined;
   private readonly rooms = new Map<string, Room>();
   private constructor() {}
@@ -23,7 +24,15 @@ export class RoomRegistry {
     this.leave(socket);
     room.add(socket);
   }
-  public find(socket: WebSocket): Room | undefined { return [...this.rooms.values()].find(room => room.has(socket)); }
+  public createIterator(): GameIterator<Room> { return new RoomIterator(this.rooms); }
+  public find(socket: WebSocket): Room | undefined {
+    const iterator = this.createIterator();
+    while (iterator.hasNext()) {
+      const room = iterator.next();
+      if (room.has(socket)) return room;
+    }
+    return undefined;
+  }
   public leave(socket: WebSocket): void {
     const room = this.find(socket);
     if (!room) return;
@@ -34,6 +43,25 @@ export class RoomRegistry {
     let code = '';
     do { code = Array.from({ length: 4 }, () => LETTERS[Math.floor(Math.random() * LETTERS.length)]).join(''); } while (this.rooms.has(code));
     return code;
+  }
+}
+
+/** Collection 2: rooms are kept in a Map (code -> room). */
+class RoomIterator implements GameIterator<Room> {
+  private readonly rooms: Iterator<Room>;
+  private current: IteratorResult<Room>;
+
+  public constructor(rooms: Map<string, Room>) {
+    this.rooms = rooms.values();
+    this.current = this.rooms.next();
+  }
+
+  public hasNext(): boolean { return !this.current.done; }
+
+  public next(): Room {
+    const room = this.current.value as Room;
+    this.current = this.rooms.next();
+    return room;
   }
 }
 

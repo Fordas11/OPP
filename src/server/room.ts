@@ -2,6 +2,7 @@ import type { WebSocket } from 'ws';
 import { MAX_PLAYERS, TICK_RATE, type Difficulty } from '../shared/core/constants.js';
 import { Game } from '../shared/game/game.js';
 import type { ServerMessage } from '../shared/core/messages.js';
+import type { GameCollection, GameIterator } from '../shared/core/iterator.js';
 import type { PlayerInput } from '../shared/core/types.js';
 import { WebSocketAdapter, type Connection } from './connection.js';
 
@@ -12,7 +13,7 @@ interface Member {
 }
 
 /** Up to 4 players; the first one is the host. */
-export class Room {
+export class Room implements GameCollection<Member> {
   private readonly members: Member[] = [];
   private game: Game | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -31,8 +32,10 @@ export class Room {
     return this.members.length === 0;
   }
 
+  public createIterator(): GameIterator<Member> { return new MemberIterator(this.members); }
+
   public has(socket: WebSocket): boolean {
-    return this.members.some(member => member.socket === socket);
+    return this.findMember(socket) !== undefined;
   }
 
   public add(socket: WebSocket): void {
@@ -52,22 +55,22 @@ export class Room {
   }
 
   public handleInput(socket: WebSocket, input: PlayerInput): void {
-    const member = this.members.find(m => m.socket === socket);
+    const member = this.findMember(socket);
     if (member) this.game?.setInput(member.id, input);
   }
 
   public handleCheat(socket: WebSocket, code: string): void {
-    const member = this.members.find(m => m.socket === socket);
+    const member = this.findMember(socket);
     if (member) this.game?.cheat(member.id, code);
   }
 
   public handleConsole(socket: WebSocket, text: string): void {
-    const member = this.members.find(m => m.socket === socket);
+    const member = this.findMember(socket);
     if (member && this.game) member.connection.send({ type: 'console', text: this.game.runConsole(member.id, text) });
   }
 
   public undoCheat(socket: WebSocket): void {
-    const member = this.members.find(m => m.socket === socket);
+    const member = this.findMember(socket);
     if (member) this.game?.undoCheat(member.id);
   }
 
@@ -95,7 +98,17 @@ export class Room {
     this.game.update(1 / TICK_RATE);
     const message: ServerMessage = { type: 'state', state: this.game.state };
     const json = JSON.stringify(message, roundNumber); // encode once for all
-    for (const member of this.members) member.connection.sendJson(json);
+    const iterator = this.createIterator();
+    while (iterator.hasNext()) iterator.next().connection.sendJson(json);
+  }
+
+  private findMember(socket: WebSocket): Member | undefined {
+    const iterator = this.createIterator();
+    while (iterator.hasNext()) {
+      const member = iterator.next();
+      if (member.socket === socket) return member;
+    }
+    return undefined;
   }
 
   private sendLobby(): void {
@@ -113,6 +126,17 @@ export class Room {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
   }
+}
+
+/** Collection 3: room members are kept in an array. */
+class MemberIterator implements GameIterator<Member> {
+  private index = 0;
+
+  public constructor(private readonly members: Member[]) {}
+
+  public hasNext(): boolean { return this.index < this.members.length; }
+
+  public next(): Member { return this.members[this.index++]; }
 }
 
 /** Rounds to 2 decimals for smaller messages. */

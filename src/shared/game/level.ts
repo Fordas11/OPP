@@ -1,6 +1,7 @@
 import type { Point } from '../core/math.js';
 import { EnemyFactory, type EnemyKind } from '../enemies/enemyFactory.js';
-import { cellCenters, startPoint, tileCenter } from '../maze/maze.js';
+import { startPoint, tileCenter } from '../maze/maze.js';
+import { cellCenters } from '../maze/mazeCells.js';
 import type { Enemy, IceTile } from '../core/types.js';
 import { AmmoPickup, HeartPickup, ShieldPickup, type Pickup } from '../pickups/pickups.js';
 

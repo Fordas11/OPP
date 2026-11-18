@@ -3,7 +3,7 @@ import { MAX_SHIELD } from '../core/constants.js';
 import { distance } from '../core/math.js';
 import type { GameState, Player } from '../core/types.js';
 import { EnemyFactory, type EnemyKind } from '../enemies/enemyFactory.js';
-import { cellCenters } from '../maze/maze.js';
+import { cellCenters } from '../maze/mazeCells.js';
 import type { ConsoleContext } from './interpreter.js';
 
 const MIN_SPAWN_DISTANCE = 150; // do not spawn on top of the knight

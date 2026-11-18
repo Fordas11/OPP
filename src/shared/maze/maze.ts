@@ -51,17 +51,6 @@ export function startPoint(): Point {
   return tileCenter(CENTER_COL, CENTER_ROW);
 }
 
-/** Cell centers (odd rows and columns). */
-export function cellCenters(maze: string[]): Point[] {
-  const cells: Point[] = [];
-  for (let row = 1; row < MAZE_ROWS; row += 2) {
-    for (let col = 1; col < MAZE_COLS; col += 2) {
-      if (!isWall(maze, col, row)) cells.push(tileCenter(col, row));
-    }
-  }
-  return cells;
-}
-
 /** Builder steps. */
 export interface MazeBuilder {
   createEmptyGrid(): void;

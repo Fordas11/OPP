@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && node dist/server/server.js"
+    "start": "npm run build && node dist/server/server.js",
+    "bench": "npm run build && node --expose-gc dist/benchmark/flyweightBenchmark.js"
   },
   "dependencies": {
     "ws": "^8.18.0"
